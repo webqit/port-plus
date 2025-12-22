@@ -27,7 +27,7 @@ import { MessageChannelPlus, BroadcastChannelPlus, SocketPort, ... } from '@webq
 
 Port+ is an API mirror of the Web Messaging APIs built for advanced use cases. An instance of `BroadcastChannelPlus`, for example, gives you the same standard `BroadcastChannel` instance, but with extended capabilities.
 
-The mapping between the Web's messaging APIs and Port+ is as follows:
+The mental model of the existing Web Messaging APIs, and where Port+ comes in, is as follows:
 
 ### 1. The Web's Messaging APIs at a Glance
 
@@ -65,14 +65,14 @@ WebSocket ──► MessageEvent (e)
 
 *In this system:*
 
-* the `WebSocket` interface is partly a message port (`addEventListener()`) and partly not (no `postMessage()`)
+* the `WebSocket` interface is partly a message port (having `addEventListener()`) and partly not (no `postMessage()`)
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
-* no reply ports (`e.ports` is not implemented by the spec)
-* no interface uniformity with `MessagePort` / `BroadcastChannel`
+* no reply ports – `e.ports` (not implemented in WebSocket)
+* no API parity with `MessagePort` / `BroadcastChannel` in all
 
 ### 2. What Port+ Does
 
-**Port+** upgrades the **port interfaces** and **MessageEvent interface** in this system and extends the same design and capabilities to the WebSocket counterpart – giving you one unified messaging API across all models.
+**Port+** unifies the messaging model across all three and extends the **port interfaces** and **MessageEvent interface** for advanced use cases.
 
 ### 3. Messaging APIs – Upgraded
 
