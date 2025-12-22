@@ -96,6 +96,12 @@ SocketPort ──► MessageEventPlus (e) ──► e.ports+
 
 **Port+** unifies the messaging model across all three and extends the **port interfaces** and **MessageEvent interface** for advanced use cases.
 
+```
+port+ ──► MessageEventPlus ──► e.ports+
+```
+
+Here, Port+ interfaces emit `MessageEventPlus`, which itself has each port in `e.ports` as a Port+ interface.
+
 ---
 
 ## The Port+ API Overview
@@ -114,7 +120,7 @@ SocketPort ──► MessageEventPlus (e) ──► e.ports+
 | `forwardPort()`                    |     ✓            |         ✗         |  ✗            |
 | `Live Objects`**                     |     ✓            |         ✗         |  ✗            |
 
-**Legend**
+*In this table:*
 
 * **Port+** → `MessagePortPlus`, `BroadcastChannelPlus`
 * **Msg. Ports** → `MessagePort`, `BroadcastChannel`
@@ -137,20 +143,12 @@ SocketPort ──► MessageEventPlus (e) ──► e.ports+
 | `live`                       |     ✓                          |         ✗                     |  ✗                     |
 | `forwarded`                  |     ✓                          |         ✗                     |  ✗                     |
 
-**Legend**
+*In this table:*
 
 * **Port+** → `MessageEventPlus`
 * **Msg. Event** → `MessageEvent`
 * **WS** → `WebSocket`'s `MessageEvent`
 * **`**`** → May be present, but not implemented
-
-**General Mental Model**
-
-```
-port+ ──► MessageEventPlus ──► e.ports+
-```
-
-> Port+ interfaces emit `MessageEventPlus`, which itself has `e.ports` as Port+ interfaces.
 
 ---
 
