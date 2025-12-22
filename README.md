@@ -7,7 +7,7 @@
 **Port+** is an upgrade to the web's port-based messaging APIs — `MessagePort`, `MessageChannel`, `BroadcastChannel` – and an onboarding of the
 WebSocket API into the same port-based messaging model.
 
-This README takes you from installation to the design concepts and, ultimately, to the capabilities of Port+.
+This README takes you from installation to the design concepts and, ultimately, to the added capabilities implied by Port+.
 
 ---
 
