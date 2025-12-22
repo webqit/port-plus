@@ -156,15 +156,15 @@ Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively exposes `e.
 
 ## Entry Points
 
-Pick a corresponding Port+ entry point to land an upgraded messaging system.
+The APIs below are the entry points to a Port+-based messaging system.
 
 ```js
 const ch = new MessageChannelPlus();
 const br = new BroadcastChannelPlus('channel-name');
-const ws = new SocketPort(url); // new SocketPort(instance);
+const soc = new SocketPort(url); // or new SocketPort(ws)
 ```
 
-`SocketPort` takes a `WebSocket` instance too – letting you create a port from an existing WebSocket connection:
+Above, `SocketPort` also takes a `WebSocket` instance – letting you create a port from an existing WebSocket connection:
 
 ```js
 const ws = new WebSocket(url);
