@@ -112,13 +112,14 @@ SocketPort ──► MessageEventPlus (e) ──► e.ports+
 | `postRequest()`                    |     ✓            |         ✗         |  ✗            |
 | `handleRequests()`                 |     ✓            |         ✗         |  ✗            |
 | `forwardPort()`                    |     ✓            |         ✗         |  ✗            |
-| Live Objects**                     |     ✓            |         ✗         |  ✗            |
+| `Live Objects`**                     |     ✓            |         ✗         |  ✗            |
 
 **Legend**
 
-* **Port+** → `MessagePortPlus`, `BroadcastChannelPlus`, `e.ports+`
-* **Msg. Ports** → `MessagePort`, `BroadcastChannel`, `e.ports`
+* **Port+** → `MessagePortPlus`, `BroadcastChannelPlus`
+* **Msg. Ports** → `MessagePort`, `BroadcastChannel`
 * **WS** → `WebSocket`
+* **`**`** → All-new concept
 
 ### 2. Message-Level API
 
@@ -141,7 +142,7 @@ SocketPort ──► MessageEventPlus (e) ──► e.ports+
 * **Port+** → `MessageEventPlus`
 * **Msg. Event** → `MessageEvent`
 * **WS** → `WebSocket`'s `MessageEvent`
-* **`✗**`** → May be present, but not implemented
+* **`**`** → May be present, but not implemented
 
 **General Mental Model**
 
