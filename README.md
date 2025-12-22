@@ -185,7 +185,7 @@ wss.on('connection', (ws) => {
 });
 ```
 
-Whatever the Port+ instance, it always has the same API and set of capabilities. For example, you get an `event.ports` implementation over web sockets this time – via `SocketPort`. 
+Whatever the Port+ instance, it always has the same API and set of capabilities. For example, with `SocketPort` you get an `event.ports` implementation over web sockets. 
 
 ---
 
