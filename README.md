@@ -29,9 +29,9 @@ Port+ is an API mirror of the Web Messaging APIs built for advanced use cases. A
 
 The following is the mental model of the existing Web Messaging APIs. The Port+ equivalent comes next.
 
-### 1. The Web's Messaging APIs at a Glance
+### (a) The Web's Messaging APIs at a Glance
 
-#### MessageChannel
+#### 1. MessageChannel
 
 ```
 MessageChannel (ch)
@@ -45,7 +45,7 @@ MessageChannel (ch)
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 
-#### BroadcastChannel
+#### 2. BroadcastChannel
 
 ```
 BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
@@ -57,7 +57,7 @@ BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 
-#### WebSocket
+#### 3. WebSocket
 
 ```
 WebSocket ──► MessageEvent (e)
@@ -70,13 +70,9 @@ WebSocket ──► MessageEvent (e)
 * no reply ports – `e.ports` (not implemented in WebSocket)
 * no API parity with `MessagePort` / `BroadcastChannel` in all
 
-### 2. What Port+ Does
+### (b) Messaging APIs – Upgraded
 
-**Port+** unifies the messaging model across all three and extends the **port interfaces** and **MessageEvent interface** for advanced use cases.
-
-### 3. Messaging APIs – Upgraded
-
-#### MessageChannelPlus
+#### 1. MessageChannelPlus
 
 ```
 MessageChannelPlus (ch)
@@ -84,21 +80,27 @@ MessageChannelPlus (ch)
   └─ ch.port2+ ──► MessageEventPlus (e) ──► e.ports+
 ```
 
-#### BroadcastChannelPlus
+#### 2. BroadcastChannelPlus
 
 ```
 BroadcastChannelPlus (br) ──► MessageEventPlus (e) ──► e.ports+
 ```
 
-#### SocketPort (WebSocket)
+#### 3. SocketPort (WebSocket)
 
 ```
 SocketPort ──► MessageEventPlus (e) ──► e.ports+
 ```
 
-### 4. The Port+ API Overview
+---
 
-#### (a) Port-Level API
+Essentially, **Port+** unifies the messaging model across all three and extends the **port interfaces** and **MessageEvent interface** for advanced use cases.
+
+---
+
+## The Port+ API Overview
+
+### 1. Port-Level API
 
 | API / Feature                      | Port+            | Msg. Ports        | WS            |
 | :--------------------------------- | :--------------- | :---------------- | :------------ |
@@ -118,7 +120,7 @@ SocketPort ──► MessageEventPlus (e) ──► e.ports+
 * **Msg. Ports** → `MessagePort`, `BroadcastChannel`, `e.ports`
 * **WS** → `WebSocket`
 
-#### (b) Message-Level API
+### 2. Message-Level API
 
 | API / Feature                | Port+                          | Msg. Event                    | WS                     |
 | ---------------------------- | :----------------------------- | :---------------------------- | :--------------------- |
@@ -148,7 +150,9 @@ port+ ──► MessageEventPlus ──► e.ports+
 
 > Port+ interfaces emit `MessageEventPlus`, which itself has `e.ports` as Port+ interfaces.
 
-### 5. Entry Points
+---
+
+## Entry Points
 
 Pick a corresponding Port+ entry point to land an upgraded messaging system.
 
