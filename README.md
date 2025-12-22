@@ -96,11 +96,13 @@ SocketPort ──► MessageEventPlus (e) ──► e.ports+
 
 **Port+** unifies the messaging model across all three and extends the **port interfaces** and **MessageEvent interface** for advanced use cases.
 
+General mental model:
+
 ```
 port+ ──► MessageEventPlus ──► e.ports+
 ```
 
-Here, Port+ interfaces emit `MessageEventPlus`, which recursively has each port in `e.ports` as a Port+ interface.
+Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively has each port in `e.ports` as a Port+ interface.
 
 ---
 
