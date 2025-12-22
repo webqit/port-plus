@@ -53,7 +53,7 @@ BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
 
 *In this system:*
 
-* the `BroadcastChannel` itself is the message port (the equivalent of `MessageEvent`)
+* the `BroadcastChannel` interface itself is the message port (the equivalent of `MessageEvent`)
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 
@@ -65,7 +65,7 @@ WebSocket ──► MessageEvent (e)
 
 *In this system:*
 
-* a `WebSocket` instance is partly a message port (`addEventListener()`) and partly not (no `postMessage()`)
+* the `WebSocket` interface is partly a message port (`addEventListener()`) and partly not (no `postMessage()`)
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * no reply ports (`e.ports` is not implemented by the spec)
 * no shared `postMessage()` interface with `MessagePort` / `BroadcastChannel`
