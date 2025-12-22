@@ -25,9 +25,9 @@ import { MessageChannelPlus, BroadcastChannelPlus, SocketPort, ... } from '@webq
 
 ## Design Concepts
 
-Port+ is an API mirror of the Web Messaging APIs built for advanced use cases. An instance of `BroadcastChannelPlus`, for example, gives you the same standard `BroadcastChannel` instance, but with extended capabilities.
+Port+ is an API mirror of the Web Messaging APIs built for advanced use cases. An instance of `BroadcastChannelPlus`, for example, gives you the same standard `BroadcastChannel` instance, but better.
 
-The mental model of the existing Web Messaging APIs, and where Port+ comes in, is as follows:
+The following is the mental model of the existing Web Messaging APIs. The Port+ equivalent comes next.
 
 ### 1. The Web's Messaging APIs at a Glance
 
