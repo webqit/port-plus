@@ -1,10 +1,11 @@
-# Port+ – *Upgraded Web Messaging Primitives*
+# Port+ – *Advanced Web Messaging Primitives*
 
 [![npm version][npm-version-src]][npm-version-href]
 [![bundle][bundle-src]][bundle-href]
 [![License][license-src]][license-href]
 
-**Port+** is an upgrade to the Web Messaging APIs — `MessagePort`, `MessageChannel`, `BroadcastChannel`, and reply ports (`MessageEvent.ports`) that lets you do more. It also brings WebSocket-based messaging up to parity with the port-based messaging system.
+**Port+** is an upgrade to the Web Messaging APIs — `MessagePort`, `MessageChannel`, `BroadcastChannel`, and their reply ports (`MessageEvent.ports`) – and an onboarding of the
+WebSocket API into the same port-based design.
 
 This README takes you from installation to the design concepts and, ultimately, to the capabilities of the system.
 
@@ -24,9 +25,11 @@ import { MessageChannelPlus, BroadcastChannelPlus, SocketPort, ... } from '@webq
 
 ## Design Concepts
 
-Port+ is a mirror of the Web Messaging APIs, but with upgrades. An instance of `BroadcastChannelPlus`, for example, gives you the same standard `BroadcastChannel` instance, but with extended capabilities.
+Port+ is an API mirror of the Web Messaging APIs built for advanced use cases. An instance of `BroadcastChannelPlus`, for example, gives you the same standard `BroadcastChannel` instance, but with extended capabilities.
 
-### 1. Messaging APIs at a Glance
+The mapping between the Web's messaging APIs and Port+ is as follows:
+
+### 1. The Web's Messaging APIs at a Glance
 
 #### MessageChannel
 
@@ -36,8 +39,10 @@ MessageChannel (ch)
   └─ ch.port2 ──► MessageEvent (e) ──► e.ports
 ```
 
+**In this system:**
+
 * `ch.port1` and `ch.port2` are message ports ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
-* messages (`e`) arrive as `message` event ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
+* messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 
 #### BroadcastChannel
@@ -46,8 +51,10 @@ MessageChannel (ch)
 BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
 ```
 
+**In this system:**
+
 * the `BroadcastChannel` itself is the message port (the equivalent of `MessageEvent`)
-* messages (`e`) arrive as `message` event ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
+* messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 
 #### WebSocket
@@ -56,7 +63,9 @@ BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
 WebSocket ──► MessageEvent (e)
 ```
 
-* messages (`e`) arrive as `message` event ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
+**In this system:**
+
+* messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * no reply ports (`e.ports` is not implemented by the spec)
 * no shared `postMessage()` interface with `MessagePort` / `BroadcastChannel`
 
