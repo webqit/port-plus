@@ -171,7 +171,7 @@ const ws = new WebSocket(url);
 const port = new SocketPort(ws);
 ```
 
-In Node.js too you can do:
+On a WebSocket server, for example, you can do:
 
 ```js
 const wss = new WebSocketServer({ server });
