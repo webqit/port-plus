@@ -4,7 +4,7 @@
 [![bundle][bundle-src]][bundle-href]
 [![License][license-src]][license-href]
 
-**Port+** is an upgrade to the Web Messaging APIs — `MessagePort`, `MessageChannel`, `BroadcastChannel`, and their reply ports (`MessageEvent.ports`) – and an onboarding of the
+**Port+** is an upgrade to the web's messaging APIs — `MessagePort`, `MessageChannel`, `BroadcastChannel`, and their reply ports (`MessageEvent.ports`) – and an onboarding of the
 WebSocket API into the same port-based design.
 
 This README takes you from installation to the design concepts and, ultimately, to the capabilities of Port+.
