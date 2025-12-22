@@ -90,17 +90,15 @@ MessageChannelPlus (ch)
 BroadcastChannelPlus (br) ──► MessageEventPlus (e) ──► e.ports+
 ```
 
-#### SocketPort (WebSocket ──► MessagePort)
+#### SocketPort (WebSocket)
 
 ```
 SocketPort ──► MessageEventPlus (e) ──► e.ports+
 ```
 
-### 4. Port+ API Overview
+### 4. The Port+ API Overview
 
-The Port+ API is a mirror of the standard messaging APIs, but with enhanced semantics.
-
-#### 4.1 Port+ vs Message Ports + WebSocket
+#### (a) Port-Level API
 
 | API / Feature                      | Port+            | Msg. Ports        | WS            |
 | :--------------------------------- | :--------------- | :---------------- | :------------ |
@@ -120,7 +118,7 @@ The Port+ API is a mirror of the standard messaging APIs, but with enhanced sema
 * **Msg. Ports** → `MessagePort`, `BroadcastChannel`, `e.ports`
 * **WS** → `WebSocket`
 
-#### 4.2 MessageEventPlus vs MessageEvent
+#### (b) Message-Level API
 
 | API / Feature                | Port+                          | Msg. Event                    | WS                     |
 | ---------------------------- | :----------------------------- | :---------------------------- | :--------------------- |
