@@ -70,7 +70,7 @@ WebSocket ──► MessageEvent (e)
 * no reply ports – `e.ports` (not implemented in WebSocket)
 * no API parity with `MessagePort` / `BroadcastChannel` in all
 
-### (b) Messaging APIs – Upgraded
+### (b) The Port+ Equivalent
 
 #### 1. MessageChannelPlus
 
@@ -92,9 +92,9 @@ BroadcastChannelPlus (br) ──► MessageEventPlus (e) ──► e.ports+
 SocketPort ──► MessageEventPlus (e) ──► e.ports+
 ```
 
----
+### (c) Result
 
-Essentially, **Port+** unifies the messaging model across all three and extends the **port interfaces** and **MessageEvent interface** for advanced use cases.
+**Port+** unifies the messaging model across all three and extends the **port interfaces** and **MessageEvent interface** for advanced use cases.
 
 ---
 
