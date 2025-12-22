@@ -53,7 +53,7 @@ BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
 
 *In this system:*
 
-* the `BroadcastChannel` interface itself is the message port (the equivalent of `MessageEvent`)
+* the `BroadcastChannel` interface is the message port – the equivalent of `MessageEvent`
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 
