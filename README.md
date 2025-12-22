@@ -7,7 +7,7 @@
 **Port+** is an upgrade to the Web Messaging APIs — `MessagePort`, `MessageChannel`, `BroadcastChannel`, and their reply ports (`MessageEvent.ports`) – and an onboarding of the
 WebSocket API into the same port-based design.
 
-This README takes you from installation to the design concepts and, ultimately, to the capabilities of the system.
+This README takes you from installation to the design concepts and, ultimately, to the capabilities of Port+.
 
 ---
 
@@ -39,7 +39,7 @@ MessageChannel (ch)
   └─ ch.port2 ──► MessageEvent (e) ──► e.ports
 ```
 
-**In this system:**
+*In this system:*
 
 * `ch.port1` and `ch.port2` are message ports ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
@@ -51,7 +51,7 @@ MessageChannel (ch)
 BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
 ```
 
-**In this system:**
+*In this system:*
 
 * the `BroadcastChannel` itself is the message port (the equivalent of `MessageEvent`)
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
@@ -63,7 +63,7 @@ BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
 WebSocket ──► MessageEvent (e)
 ```
 
-**In this system:**
+*In this system:*
 
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * no reply ports (`e.ports` is not implemented by the spec)
