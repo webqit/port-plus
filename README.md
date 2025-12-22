@@ -102,7 +102,7 @@ General mental model:
 port+ ──► MessageEventPlus ──► e.ports+
 ```
 
-Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively has each port in `e.ports` as a Port+ interface.
+Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively exposes `e.ports` as Port+ interface.
 
 ---
 
