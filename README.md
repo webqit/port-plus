@@ -41,7 +41,7 @@ MessageChannel (ch)
 
 *In this system:*
 
-* `ch.port1` and `ch.port2` are message ports ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
+* `ch.port1` and `ch.port2` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 
