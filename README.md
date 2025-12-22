@@ -112,7 +112,7 @@ Essentially, **Port+** unifies the messaging model across all three and extends 
 | `postRequest()`                    |     ✓            |         ✗         |  ✗            |
 | `handleRequests()`                 |     ✓            |         ✗         |  ✗            |
 | `forwardPort()`                    |     ✓            |         ✗         |  ✗            |
-| _Live Objects_                     |     ✓            |         ✗         |  ✗            |
+| Live Objects**                     |     ✓            |         ✗         |  ✗            |
 
 **Legend**
 
@@ -123,14 +123,14 @@ Essentially, **Port+** unifies the messaging model across all three and extends 
 ### 2. Message-Level API
 
 | API / Feature                | Port+                          | Msg. Event                    | WS                     |
-| ---------------------------- | :----------------------------- | :---------------------------- | :--------------------- |
+| :--------------------------- | :----------------------------- | :---------------------------- | :--------------------- |
 | `data`                       |     ✓ (_Live Objects_ support) |         ✓ (no _Live Objects_) |  ✓ (typically string)  |
-| `type`                       |     ✓                          |         ✓                     |  ✗                     |
-| `ports`                      |     ✓ (Port+)                  |         ✓                     |  ✗                     |
-| `preventDefault()`           |     ✓                          |         ✓                     |  ✗                     |
-| `defaultPrevented`           |     ✓                          |         ✓                     |  ✗                     |
-| `stopPropagation()`          |     ✓                          |         ✓                     |  ✗                     |
-| `stopImmediatePropagation()` |     ✓                          |         ✓                     |  ✗                     |
+| `type`                       |     ✓                          |         ✓                     |  ✓                     |
+| `ports`                      |     ✓ (Port+)                  |         ✓                     |  ✗**                   |
+| `preventDefault()`           |     ✓                          |         ✓                     |  ✗**                   |
+| `defaultPrevented`           |     ✓                          |         ✓                     |  ✗**                   |
+| `stopPropagation()`          |     ✓                          |         ✓                     |  ✗**                   |
+| `stopImmediatePropagation()` |     ✓                          |         ✓                     |  ✗**                   |
 | `respondWith()`              |     ✓                          |         ✗                     |  ✗                     |
 | `eventID`                    |     ✓                          |         ✗                     |  ✗                     |
 | `live`                       |     ✓                          |         ✗                     |  ✗                     |
@@ -141,6 +141,7 @@ Essentially, **Port+** unifies the messaging model across all three and extends 
 * **Port+** → `MessageEventPlus`
 * **Msg. Event** → `MessageEvent`
 * **WS** → `WebSocket`'s `MessageEvent`
+* **`✗**`** → May be present, but not implemented
 
 **General Mental Model**
 
