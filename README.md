@@ -100,7 +100,7 @@ SocketPort ──► MessageEventPlus (e) ──► e.ports+
 port+ ──► MessageEventPlus ──► e.ports+
 ```
 
-Here, Port+ interfaces emit `MessageEventPlus`, which itself has each port in `e.ports` as a Port+ interface.
+Here, Port+ interfaces emit `MessageEventPlus`, which recursively has each port in `e.ports` as a Port+ interface.
 
 ---
 
@@ -122,7 +122,7 @@ Here, Port+ interfaces emit `MessageEventPlus`, which itself has each port in `e
 
 *In this table:*
 
-* **Port+** → `MessagePortPlus`, `BroadcastChannelPlus`
+* **Port+** → `MessagePortPlus`, `BroadcastChannelPlus`, `SocketPort`
 * **Msg. Ports** → `MessagePort`, `BroadcastChannel`
 * **WS** → `WebSocket`
 * **`**`** → All-new concept
