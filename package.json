@@ -1,0 +1,43 @@
+{
+  "name": "@webqit/port-plus",
+  "publishConfig": {
+    "access": "public"
+  },
+  "title": "Port+",
+  "description": "Upgraded web messaging primitives – MessageChannel, BroadcastChannel, MessagePort, MessageEvent, WebSocket",
+  "keywords": [
+    "MessageChannel", "BroadcastChannel", "MessagePort", "MessageEvent", "WebSocket"
+  ],
+  "homepage": "https://port-plus.netlify.app/",
+  "icon": "https://webqit.io/icon.svg",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webqit/port-plus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/webqit/port-plus/issues"
+  },
+  "type": "module",
+  "main": "./src/index.js",
+  "scripts": {
+    "test": "mocha --extension .test.js --recursive --timeout 5000 --exit",
+    "build": "esbuild main=src/index.js --bundle --minify --sourcemap --outdir=dist",
+    "preversion": "npm run test && npm run build && git add -A dist",
+    "postversion": "git push && git push --tags",
+    "version:next": "npm version prerelease --preid=next"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "esbuild": "^0.20.2",
+    "fake-indexeddb": "^6.2.5",
+    "mocha": "^10.3.0"
+  },
+  "author": "Oxford Harrison <oxharris.dev@gmail.com>",
+  "maintainers": [
+    "Oxford Harrison <oxharris.dev@gmail.com>"
+  ],
+  "contributors": []
+}
