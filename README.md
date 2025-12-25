@@ -18,7 +18,7 @@ npm i @webqit/port-plus
 ```
 
 ```js
-import { MessageChannelPlus, BroadcastChannelPlus, SocketPort, ... } from '@webqit/port-plus';
+import { MessageChannelPlus, BroadcastChannelPlus, WebSocketPort, ... } from '@webqit/port-plus';
 ```
 
 ---
@@ -48,14 +48,14 @@ MessageChannel (ch)
 #### 2. BroadcastChannel
 
 ```
-BroadcastChannel (br) ──► MessageEvent (e) ──► e.ports
+BroadcastChannel (br) ──► MessageEvent (e)
 ```
 
 *In this system:*
 
 * the `BroadcastChannel` interface is the message port – the equivalent of `MessagePort`
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
-* `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
+* no reply ports – `e.ports` (not implemented in WebSocket)
 
 #### 3. WebSocket
 
@@ -86,10 +86,10 @@ MessageChannelPlus (ch)
 BroadcastChannelPlus (br) ──► MessageEventPlus (e) ──► e.ports+
 ```
 
-#### 3. SocketPort (WebSocket)
+#### 3. WebSocketPort (WebSocket)
 
 ```
-SocketPort ──► MessageEventPlus (e) ──► e.ports+
+WebSocketPort ──► MessageEventPlus (e) ──► e.ports+
 ```
 
 ### (c) Result
@@ -120,11 +120,11 @@ Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively exposes `e.
 | `postRequest()`                    |     ✓            |         ✗         |  ✗            |
 | `handleRequests()`                 |     ✓            |         ✗         |  ✗            |
 | `forwardPort()`                    |     ✓            |         ✗         |  ✗            |
-| `Live Objects`**                     |     ✓            |         ✗         |  ✗            |
+| `Live Objects`**                   |     ✓            |         ✗         |  ✗            |
 
 *In this table:*
 
-* **Port+** → `MessagePortPlus`, `BroadcastChannelPlus`, `SocketPort`
+* **Port+** → `MessagePortPlus`, `BroadcastChannelPlus`, `WebSocketPort`
 * **Msg. Ports** → `MessagePort`, `BroadcastChannel`
 * **WS** → `WebSocket`
 * **`**`** → All-new concept
@@ -135,7 +135,7 @@ Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively exposes `e.
 | :--------------------------- | :----------------------------- | :---------------------------- | :--------------------- |
 | `data`                       |     ✓ (_Live Objects_ support) |         ✓ (no _Live Objects_) |  ✓ (typically string)  |
 | `type`                       |     ✓                          |         ✓                     |  ✓                     |
-| `ports`                      |     ✓ (Port+)                  |         ✓                     |  ✗**                   |
+| `ports`                      |     ✓ (Port+)                  |         ✓**                   |  ✗**                   |
 | `preventDefault()`           |     ✓                          |         ✓                     |  ✗**                   |
 | `defaultPrevented`           |     ✓                          |         ✓                     |  ✗**                   |
 | `stopPropagation()`          |     ✓                          |         ✓                     |  ✗**                   |
@@ -150,7 +150,7 @@ Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively exposes `e.
 * **Port+** → `MessageEventPlus`
 * **Msg. Event** → `MessageEvent`
 * **WS** → `WebSocket`'s `MessageEvent`
-* **`**`** → May be present, but not implemented
+* **`**`** → May be present, but may not be implemented
 
 ---
 
@@ -161,14 +161,14 @@ The APIs below are the entry points to a Port+-based messaging system.
 ```js
 const ch = new MessageChannelPlus();
 const br = new BroadcastChannelPlus('channel-name');
-const soc = new SocketPort(url); // or new SocketPort(ws)
+const soc = new WebSocketPort(url); // or new WebSocketPort(ws)
 ```
 
-Above, `SocketPort` also takes a `WebSocket` instance – letting you create a port from an existing WebSocket connection:
+Above, `WebSocketPort` also takes a `WebSocket` instance – letting you create a port from an existing WebSocket connection:
 
 ```js
 const ws = new WebSocket(url);
-const port = new SocketPort(ws);
+const port = new WebSocketPort(ws);
 ```
 
 On a WebSocket server, for example, you can do:
@@ -180,12 +180,12 @@ wss.on('connection', (ws) => {
     ws.send('something');
 
     // The unified way
-    const port = new SocketPort(ws);
+    const port = new WebSocketPort(ws);
     port.postMessage('something');
 });
 ```
 
-Whatever the Port+ instance, it always has the same API and set of capabilities. For example, with `SocketPort` you get an `event.ports` implementation over web sockets. 
+Whatever the Port+ instance, it always has the same API and set of capabilities. For example, with `WebSocketPort` you get an `event.ports` implementation over web sockets. 
 
 ---
 
