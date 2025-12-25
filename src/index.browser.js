@@ -1,2 +1,4 @@
 import * as PortPlus from './index.js';
-Object.assign(globalThis, PortPlus);
+
+if (!globalThis.webqit) globalThis.webqit = {}
+Object.assign(globalThis.webqit, PortPlus);
