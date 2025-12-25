@@ -6,7 +6,11 @@
   "title": "Port+",
   "description": "Upgraded web messaging primitives – MessageChannel, BroadcastChannel, MessagePort, MessageEvent, WebSocket",
   "keywords": [
-    "MessageChannel", "BroadcastChannel", "MessagePort", "MessageEvent", "WebSocket"
+    "MessageChannel",
+    "BroadcastChannel",
+    "MessagePort",
+    "MessageEvent",
+    "WebSocket"
   ],
   "homepage": "https://port-plus.netlify.app/",
   "icon": "https://webqit.io/icon.svg",
@@ -23,10 +27,14 @@
   "main": "./src/index.js",
   "scripts": {
     "test": "mocha --extension .test.js --recursive --timeout 5000 --exit",
-    "build": "esbuild main=src/index.js --bundle --minify --sourcemap --outdir=dist",
+    "build": "esbuild main=src/index.browser.js --bundle --minify --sourcemap --outdir=dist",
     "preversion": "npm run test && npm run build && git add -A dist",
     "postversion": "git push && git push --tags",
     "version:next": "npm version prerelease --preid=next"
+  },
+  "dependencies": {
+    "@webqit/observer": "^3.8.14",
+    "@webqit/util": "^0.8.16"
   },
   "devDependencies": {
     "chai": "^4.3.4",
