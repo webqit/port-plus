@@ -24,7 +24,9 @@
     "url": "https://github.com/webqit/port-plus/issues"
   },
   "type": "module",
-  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
   "scripts": {
     "test": "mocha --extension .test.js --recursive --timeout 5000 --exit",
     "build": "esbuild main=src/index.browser.js --bundle --minify --sourcemap --outdir=dist",
