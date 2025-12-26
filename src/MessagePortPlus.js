@@ -2,6 +2,7 @@ import { _wq as $wq } from '@webqit/util/js/index.js';
 import { _isObject, _isTypeObject } from '@webqit/util/js/index.js';
 import { MessageEventPlus } from './MessageEventPlus.js';
 import Observer from '@webqit/observer';
+import { WebSocketPort } from './WebSocketPort.js';
 
 export const _wq = (target, ...args) => $wq(target, 'port+', ...args);
 export const _options = (target) => $wq(target, 'port+', 'meta').get('options') || {};
@@ -13,7 +14,7 @@ const portPlusMethods = [
     'postMessage',
     'postRequest',
     'dispatchEvent',
-    'forwardPort',
+    'relay',
     'start',
     'readyStateChange',
     'removeEventListener',
@@ -46,7 +47,7 @@ export class MessagePortPlus extends MessagePortPlusMixin(EventTarget) {
 export function MessagePortPlusMixin(superClass) {
     return class extends superClass {
 
-        static upgradeInPlace(port) {
+        static upgradeInPlace(port, options = {}) {
             if (port instanceof MessagePortPlus) {
                 return port;
             }
@@ -68,6 +69,9 @@ export function MessagePortPlusMixin(superClass) {
                 if (original) Object.defineProperty(port, `_${prop}`, { ...original, configurable: true });
                 Object.defineProperty(port, prop, { ...plus, configurable: true });
             }
+
+            const portPlusMeta = _wq(port, 'meta');
+            portPlusMeta.set('options', options);
 
             this.upgradeEvents(port);
         }
@@ -354,12 +358,15 @@ export function MessagePortPlusMixin(superClass) {
 
             // Format payload if not yet in the ['.wq'] format
             let _relayedFrom;
-            if (!_isObject(message?.['.wq'])) {
-                const { portOptions, wqOptions: { relayedFrom, ...wqOptions } } = preProcessPostMessage.call(this, message, transferOrOptions);
+            const { portOptions, wqOptions: { relayedFrom, ...wqOptions } } = preProcessPostMessage.call(this, message, transferOrOptions);
+            if (wqOptions.type !== 'message'
+                || wqOptions.live
+                || wqOptions.bubbles
+                || portOptions.transfer?.length && (this instanceof BroadcastChannel || this instanceof WebSocketPort)) {
                 message = { message, ['.wq']: wqOptions };
-                transferOrOptions = portOptions;
-                _relayedFrom = relayedFrom;
             }
+            transferOrOptions = portOptions;
+            _relayedFrom = relayedFrom;
 
             // Exec
             const post = () => {
@@ -413,25 +420,45 @@ export function MessagePortPlusMixin(superClass) {
 
         // Forwarding
 
-        forwardPort(eventTypes, targetPort, { resolveData = null, bidirectional = false, namespace1 = null, namespace2 = null } = {}) {
-            if (!(this instanceof MessagePortPlus) || !(targetPort instanceof MessagePortPlus)) {
-                throw new Error('Both ports must be instance of MessagePortPlus.');
+        relay({ to: targetPort, from: sourcePort, types = '*', channel = null, resolveMessage = null, bidirectional = false } = {}) {
+            if (targetPort && sourcePort) {
+                throw new Error('Only one of "to" and "from" may be specified');
             }
-            if (typeof eventTypes !== 'function' && !(eventTypes = [].concat(eventTypes)).length) {
+
+            if (sourcePort) {
+                targetPort = this;
+            } else sourcePort = this;
+
+            if (targetPort === sourcePort) {
+                throw new Error('Source and target ports cannot be the same');
+            }
+
+            if (!(sourcePort instanceof MessagePortPlus) || !(targetPort instanceof MessagePortPlus)) {
+                throw new Error('Both source and target ports must be instance of MessagePortPlus.');
+            }
+
+            if (typeof types !== 'function' && !(types = [].concat(types)).length) {
                 throw new Error('Event types must be specified.');
             }
 
-            const downstreamRegistry = getDownstreamRegistry.call(this);
-            const registration = { targetPort, eventTypes, options: { resolveData, namespace1, namespace2 } };
+            if (typeof channel === 'string') {
+                channel = { from: channel };
+            } else if (_isObject(channel)) {
+                if (Object.keys(channel).filter((k) => !['from', 'to'].includes(k)).length) {
+                    throw new Error('Channel must be a string or an object of "from"/"to" members');
+                }
+            } else if (channel) {
+                throw new Error('Invalid channel parameter');
+            }
+
+            const downstreamRegistry = getDownstreamRegistry.call(sourcePort);
+            const registration = { targetPort, types, channel, resolveMessage };
             downstreamRegistry.add(registration);
 
             let cleanup2;
             if (bidirectional) {
-                cleanup2 = this.forwardPort.call(
-                    targetPort,
-                    typeof eventTypes === 'function' ? eventTypes : eventTypes.filter((s) => s !== 'close'),
-                    this,
-                    { resolveData, bidirectional: false, namespace1: namespace2, namespace2: namespace1 }
+                cleanup2 = targetPort.relay(
+                    { to: sourcePort, types, channel: channel && { to: channel.from, from: channel.to }, resolveMessage, bidirectional: false }
                 );
             }
 
@@ -439,6 +466,40 @@ export function MessagePortPlusMixin(superClass) {
                 downstreamRegistry.delete(registration);
                 cleanup2?.();
             };
+        }
+
+        channel(channelSpec, resolveMessage = null) {
+            const channel = new MessageChannel;
+
+            MessagePortPlus.upgradeInPlace(channel.port1, { autoStart: this.options.autoStart, postAwaitsOpen: this.options.postAwaitsOpen });
+            MessagePortPlus.upgradeInPlace(channel.port2, { autoStart: this.options.autoStart, postAwaitsOpen: this.options.postAwaitsOpen });
+
+            const garbageCollection = getGarbageCollection.call(this);
+            garbageCollection.add(this.relay({ channel: channelSpec, to: channel.port1, bidirectional: true, resolveMessage }));
+
+            channel.port1.start();
+            this.readyStateChange('close').then(() => {
+                channel.port1.close();
+            });
+
+            return channel.port2;
+        }
+
+        projectMutations({ from, to, ...options }) {
+            if (!from || !to
+                || typeof from === 'string' && typeof to === 'string'
+                || _isTypeObject(from) && _isTypeObject(to)) {
+                throw new Error('Invalid "from"/"to" parameters');
+            }
+            if (typeof from === 'string') {
+                if (!_isTypeObject(to)) throw new Error('Invalid "to" parameter. Object/array expected');
+                return applyMutations.call(this, to, from, options);
+            }
+            if (typeof to === 'string') {
+                if (!_isTypeObject(from)) throw new Error('Invalid "from" parameter. Object/array expected');
+                return publishMutations.call(this, from, to, options);
+            }
+            throw new Error('Invalid "from"/"to" parameters');
         }
 
         // Lifecycle
@@ -571,17 +632,8 @@ export function MessagePortPlusMockPortsMixin(superClass) {
             Object.defineProperty(event, 'ports', { value: [], configurable: true });
 
             for (let i = 0; i < numPorts; i++) {
-                const channel = new MessageChannel;
-                channel.port1.start();
-
-                MessagePortPlus.upgradeInPlace(channel.port1);
-                garbageCollection.add(portPlus.forwardPort('*', channel.port1, { bidirectional: true, namespace1: `${event.data['.wq'].eventID}:${i}` }));
-                event.ports.push(channel.port2);
-
-                portPlus.readyStateChange('close').then(() => {
-                    channel.port1.close();
-                    channel.port2.close();
-                });
+                const port = portPlus.channel(`${event.data['.wq'].eventID}:${i}`);
+                event.ports.push(port);
             }
 
             return event;
@@ -598,7 +650,16 @@ export function MessagePortPlusMockPortsMixin(superClass) {
 
                 for (let i = 0; i < numPorts; i++) {
                     MessagePortPlus.upgradeInPlace(messagePorts[i]);
-                    garbageCollection.add(this.forwardPort('*', messagePorts[i], { bidirectional: true, namespace1: `${payload['.wq'].eventID}:${i}` }));
+
+                    garbageCollection.add(this.relay({ channel: `${payload['.wq'].eventID}:${i}`, to: messagePorts[i], bidirectional: true }));
+
+                    messagePorts[i].start();
+                    messagePorts[i].readyStateChange('close').then(() => {
+                        // Send a disconnect ping to port2
+                        const { wqOptions } = preProcessPostMessage.call(this);
+                        const pingData = { ['.wq']: wqOptions, ping: 'disconnect' };
+                        this.postMessage(pingData, { type: `${payload['.wq'].eventID}:${i}:message` });
+                    });
                 }
 
                 payload['.wq'].numPorts = numPorts; // IMPORTANT: numPorts must be set before ports are added
@@ -629,27 +690,27 @@ export function propagateEvent(event) {
         const { type, eventID, data, live, bubbles, ports } = event;
 
         const called = new WeakSet;
-        for (const { targetPort, eventTypes, options } of downstreamRegistry) {
+        for (const { targetPort, types, channel, resolveMessage } of downstreamRegistry) {
             if (called.has(targetPort)) continue;
 
             let $type = type;
-            if (options.namespace1) {
-                [, $type] = (new RegExp(`^${options.namespace1.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:([^:]+)$`)).exec(type) || [];
+            if (channel.from) {
+                [, $type] = (new RegExp(`^${channel.from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:([^:]+)$`)).exec(type) || [];
                 if (!$type) continue;
             }
 
-            const matches = typeof eventTypes === 'function'
-                ? eventTypes($type, this, targetPort, options)
-                : [].concat(eventTypes).find((t) => {
+            const matches = typeof types === 'function'
+                ? types($type, this, targetPort, channel)
+                : [].concat(types).find((t) => {
                     return t === $type || t === '*';
                 });
 
             if (!matches) continue;
             called.add(targetPort);
 
-            targetPort.postMessage(options.resolveData ? options.resolveData(data, this, targetPort, options) : data, {
+            targetPort.postMessage(resolveMessage ? resolveMessage(data, this, targetPort, channel) : data, {
                 transfer: ports,
-                type: options.namespace2 ? `${options.namespace2}:${$type}` : $type,
+                type: channel.to ? `${channel.to}:${$type}` : $type,
                 eventID,
                 bubbles,
                 live,

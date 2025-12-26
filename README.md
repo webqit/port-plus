@@ -119,7 +119,9 @@ Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively exposes `e.
 | `readyStateChange()`               |     ✓            |         ✗         |  ✗            |
 | `postRequest()`                    |     ✓            |         ✗         |  ✗            |
 | `handleRequests()`                 |     ✓            |         ✗         |  ✗            |
-| `forwardPort()`                    |     ✓            |         ✗         |  ✗            |
+| `relay()`                          |     ✓            |         ✗         |  ✗            |
+| `channel()`                        |     ✓            |         ✗         |  ✗            |
+| `projectMutations()`               |     ✓            |         ✗         |  ✗            |
 | `Live Objects`**                   |     ✓            |         ✗         |  ✗            |
 
 *In this table:*
@@ -143,7 +145,7 @@ Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively exposes `e.
 | `respondWith()`              |     ✓                          |         ✗                     |  ✗                     |
 | `eventID`                    |     ✓                          |         ✗                     |  ✗                     |
 | `live`                       |     ✓                          |         ✗                     |  ✗                     |
-| `forwarded`                  |     ✓                          |         ✗                     |  ✗                     |
+| `relayedFrom`                |     ✓                          |         ✗                     |  ✗                     |
 
 *In this table:*
 

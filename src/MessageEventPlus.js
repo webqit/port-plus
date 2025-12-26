@@ -1,7 +1,7 @@
 import { _isTypeObject } from '@webqit/util/js/index.js';
-import { MessagePortPlus, applyMutations } from './MessagePortPlus.js';
+import { MessagePortPlus, applyMutations, _options } from './MessagePortPlus.js';
 
-export class MessageEventPlus extends Event {
+export class MessageEventPlus extends MessageEvent {
 
     #originalTarget;
     get originalTarget() { return this.#originalTarget; }
@@ -50,7 +50,8 @@ export class MessageEventPlus extends Event {
         this.#honourDoneMutationFlags = honourDoneMutationFlags;
 
         this.#ports = ports;
-        this.#ports.forEach((port) => MessagePortPlus.upgradeInPlace(port));
+        const options = this.#originalTarget && _options(this.#originalTarget) || {};
+        this.#ports.forEach((port) => MessagePortPlus.upgradeInPlace(port, { autoStart: options.autoStart, postAwaitsOpen: options.postAwaitsOpen }));
 
         if (_isTypeObject(this.#data) && this.#live) {
             if (typeof eventID !== 'string') {
