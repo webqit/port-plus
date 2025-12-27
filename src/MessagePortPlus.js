@@ -743,7 +743,7 @@ export function getReadyStateInternals() {
     const portPlusMeta = _meta(this);
     if (!portPlusMeta.has('readystate_registry')) {
         const $ref = (o) => {
-            o.promise = new Promise((resolve) => o.resolve = resolve);
+            o.promise = new Promise((res, rej) => (o.resolve = res, o.reject = rej));
             return o;
         };
         portPlusMeta.set('readystate_registry', {
