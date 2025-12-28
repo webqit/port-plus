@@ -1,7 +1,7 @@
 import { _wq as $wq } from '@webqit/util/js/index.js';
 import { _isObject, _isTypeObject } from '@webqit/util/js/index.js';
 import { MessageEventPlus } from './MessageEventPlus.js';
-import Observer from '@webqit/observer';
+import { Observer } from '@webqit/observer';
 import { WebSocketPort } from './WebSocketPort.js';
 
 export const _wq = (target, ...args) => $wq(target, 'port+', ...args);
