@@ -38,10 +38,10 @@
     "@webqit/util": "^0.8.16"
   },
   "peerDependencies": {
-    "@webqit/observer": "^3.8.14"
+    "@webqit/observer": "^3.8.16"
   },
   "devDependencies": {
-    "@webqit/observer": "^3.8.14",
+    "@webqit/observer": "^3.8.16",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "esbuild": "^0.20.2",

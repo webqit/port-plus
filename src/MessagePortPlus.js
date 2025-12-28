@@ -5,8 +5,8 @@ import Observer from '@webqit/observer';
 import { WebSocketPort } from './WebSocketPort.js';
 
 export const _wq = (target, ...args) => $wq(target, 'port+', ...args);
+export const _meta = (target, ...args) => $wq(target, 'port+', 'meta', ...args);
 export const _options = (target) => $wq(target, 'port+', 'meta').get('options') || {};
-export const _meta = (target) => $wq(target, 'port+', 'meta');
 
 const portPlusMethods = [
     'addEventListener',
@@ -74,6 +74,7 @@ export function MessagePortPlusMixin(superClass) {
             portPlusMeta.set('options', options);
 
             this.upgradeEvents(port);
+            return port;
         }
 
         static upgradeEvents(port, portPlus = null) {
@@ -511,7 +512,7 @@ export function MessagePortPlusMixin(superClass) {
         }
 
         readyStateChange(query) {
-            if (!['open', 'messaging', 'error', 'close'].includes(query)) {
+            if (!['open', 'messaging', 'close'].includes(query)) {
                 throw new Error(`Invalid readyState query "${query}"`);
             }
             const readyStateInternals = getReadyStateInternals.call(this);
@@ -743,13 +744,12 @@ export function getReadyStateInternals() {
     const portPlusMeta = _meta(this);
     if (!portPlusMeta.has('readystate_registry')) {
         const $ref = (o) => {
-            o.promise = new Promise((res, rej) => (o.resolve = res, o.reject = rej));
+            o.promise = new Promise((res, rej) => (o.resolve = () => res(this), o.reject = rej));
             return o;
         };
         portPlusMeta.set('readystate_registry', {
             open: $ref({}),
             messaging: $ref({}),
-            error: $ref({}),
             close: $ref({}),
         });
     }
