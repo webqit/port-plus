@@ -355,7 +355,7 @@ export function MessagePortPlusMixin(superClass) {
             // Update readyState
             const readyStateInternals = getReadyStateInternals.call(this);
             readyStateInternals.messaging.state = true;
-            readyStateInternals.messaging.resolve();
+            readyStateInternals.messaging.resolve(this);
 
             // Format payload if not yet in the ['.wq'] format
             let _relayedFrom;
@@ -528,7 +528,7 @@ export function MessagePortPlusMixin(superClass) {
             const readyStateOpen = () => {
                 if (readyStateInternals.open.state) return;
                 readyStateInternals.open.state = true;
-                readyStateInternals.open.resolve();
+                readyStateInternals.open.resolve(this);
 
                 const openEvent = new MessageEventPlus(null, { type: 'open' });
                 this._dispatchEvent
@@ -607,7 +607,7 @@ export function MessagePortPlusMixin(superClass) {
                 ? this._close(...args)
                 : super.close(...args);
 
-            readyStateInternals.close.resolve();
+            readyStateInternals.close.resolve(this);
 
             const openEvent = new MessageEventPlus(null, { type: 'close' });
             this._dispatchEvent
@@ -744,7 +744,7 @@ export function getReadyStateInternals() {
     const portPlusMeta = _meta(this);
     if (!portPlusMeta.has('readystate_registry')) {
         const $ref = (o) => {
-            o.promise = new Promise((res, rej) => (o.resolve = () => res(this), o.reject = rej));
+            o.promise = new Promise((res, rej) => (o.resolve = res, o.reject = rej));
             return o;
         };
         portPlusMeta.set('readystate_registry', {
