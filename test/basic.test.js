@@ -53,3 +53,6 @@ p.port2.close();
 
 await new Promise((r) => setTimeout(r, 3000));
 m.port2.close();
+
+const e = new BroadcastChannelPlus('test');
+console.log('________________', e.readyState)
