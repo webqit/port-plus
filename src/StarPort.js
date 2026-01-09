@@ -78,7 +78,7 @@ export class StarPort extends MessagePortPlus {
         }
     }
 
-    _autoStart() {} // Must be present to do nothing
+    _autoStart() { } // Must be present to do nothing
 
     start() {
         const readyStateInternals = getReadyStateInternals.call(this);
@@ -87,6 +87,9 @@ export class StarPort extends MessagePortPlus {
         readyStateInternals.open.state = true;
 
         readyStateInternals.open.resolve(this);
+
+        const openEvent = new MessageEventPlus(null, { type: 'open' });
+        super.dispatchEvent(openEvent);
     }
 
     close(...args) {
@@ -100,5 +103,8 @@ export class StarPort extends MessagePortPlus {
         }
 
         readyStateInternals.close.resolve(this);
+
+        const closeEvent = new MessageEventPlus(null, { type: 'close' });
+        super.dispatchEvent(closeEvent);
     }
 }
