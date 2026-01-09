@@ -1136,7 +1136,7 @@ All message events dispatched by Port+ ports.
 #### Properties
 
 | Property      | Type            | Description                     |
-| ------------- | ------------------------------- |
+| ------------- | --- | ------------------------------- |
 | `data`        | any | Message payload                 |
 | `type`        | string | Event type                      |
 | `eventID`     | string | Stable message identifier       |
