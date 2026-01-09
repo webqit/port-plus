@@ -54,7 +54,7 @@ export function MessagePortPlusMixin(superClass) {
 
             const proto = this.prototype;
 
-            for (const prop of portPlusMethods) {
+            for (const prop of portPlusMethods.concat('_autoStart')) {
                 const original = port[prop];
                 const plus = proto[prop];
 
@@ -283,12 +283,7 @@ export function MessagePortPlusMixin(superClass) {
 
         set onmessage(v) {
             // Auto-start?
-            const portPlusMeta = _meta(this);
-            const options = _options(this);
-            if (!portPlusMeta.get('internal_call')
-                && options.autoStart) {
-                this.start();
-            }
+            this._autoStart();
 
             if (typeof super.onmessage !== 'undefined') {
                 super.onmessage = v;
@@ -311,12 +306,7 @@ export function MessagePortPlusMixin(superClass) {
 
         addEventListener(...args) {
             // Auto-start?
-            const portPlusMeta = _meta(this);
-            const options = _options(this);
-            if (!portPlusMeta.get('internal_call')
-                && options.autoStart) {
-                this.start();
-            }
+            this._autoStart();
 
             // Add to registry 
             const garbageCollection = getGarbageCollection.call(this);
@@ -345,12 +335,7 @@ export function MessagePortPlusMixin(superClass) {
 
         postMessage(message, transferOrOptions = {}) {
             // Auto-start?
-            const portPlusMeta = _meta(this);
-            const options = _options(this);
-            if (!portPlusMeta.get('internal_call')
-                && options.autoStart) {
-                this.start();
-            }
+            this._autoStart();
 
             // Update readyState
             const readyStateInternals = getReadyStateInternals.call(this);
@@ -377,6 +362,7 @@ export function MessagePortPlusMixin(superClass) {
             };
 
             // If client-server mode, wait for open ready state
+            const options = _options(this);
             if (options.postAwaitsOpen) readyStateInternals.open.promise.then(post);
             else post();
         }
@@ -517,6 +503,15 @@ export function MessagePortPlusMixin(superClass) {
             }
             const readyStateInternals = getReadyStateInternals.call(this);
             return readyStateInternals[query].promise;
+        }
+
+        _autoStart() {
+            const portPlusMeta = _meta(this);
+            const options = _options(this);
+            if (!portPlusMeta.get('internal_call')
+                && options.autoStart) {
+                this.start();
+            }
         }
 
         start() {

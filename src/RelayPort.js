@@ -6,8 +6,8 @@ export class RelayPort extends StarPort {
     #channelSpec;
     get channelSpec() { return this.#channelSpec; }
 
-    constructor(channel = null) {
-        super();
+    constructor(channel = null, options = {}) {
+        super(options);
         if (typeof channel === 'string') {
             channel = { from: channel, to: channel };
         } else if (_isObject(channel)) {
@@ -20,14 +20,14 @@ export class RelayPort extends StarPort {
         this.#channelSpec = channel;
     }
 
-    addPort(portPlus, { resolveMessage = null } = {}) {
+    addPort(portPlus, { resolveMessage = null, ...options } = {}) {
         const $resolveMessage = (data, ...args) => {
             if (resolveMessage) return resolveMessage(data, ...args);
             return data;
         };
 
         // Add port and forward its messages back to this relay instance
-        const unadd = super.addPort(portPlus, { enableBubbling: false });
+        const unadd = super.addPort(portPlus, options);
         const unforward = portPlus.relay({ channel: this.#channelSpec, to: this, bidirectional: false/* IMPORTANT */, resolveMessage: $resolveMessage });
 
         const messageType_ping = this.#channelSpec.from

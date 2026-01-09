@@ -35,37 +35,37 @@ import { MessageChannelPlus, BroadcastChannelPlus, WebSocketPort, StarPort, Rela
 
 ## Design Concepts
 
-Port+ is an API mirror of the Web Messaging APIs built for advanced use cases. An instance of `BroadcastChannelPlus`, for example, gives you the same standard `BroadcastChannel` instance, but better.
+Port+ is an API mirror of the Web Messaging APIs built for advanced use cases. An instance of `BroadcastChannelPlus`, for example, is the same `BroadcastChannel` instance, but one that lets you do more.
 
-The following is the mental model of the existing Web Messaging APIs. The Port+ equivalent comes next.
+To see that changed, here is the existing set of Web Messaging APIs. Next, is the Port+ equivalent.
 
 ### (a) The Web's Messaging APIs at a Glance
 
 #### 1. MessageChannel
 
 ```
-MessageChannel (ch)
-  ├─ ch.port1 ──► MessageEvent (e) ──► e.ports
-  └─ ch.port2 ──► MessageEvent (e) ──► e.ports
+MessageChannel (mch)
+  ├─ mch.port1 ──► MessageEvent (e) ──► e.ports
+  └─ mch.port2 ──► MessageEvent (e) ──► e.ports
 ```
 
 *In this structure:*
 
-* `ch.port1` and `ch.port2` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
+* `mch.port1` and `mch.port2` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
 * `e.ports` are each a message port ([`MessagePort`](https://developer.mozilla.org/en-US/docs/Web/API/MessagePort))
 
 #### 2. BroadcastChannel
 
 ```
-BroadcastChannel (br) ──► MessageEvent (e)
+BroadcastChannel (brc) ──► MessageEvent (e)
 ```
 
 *In this structure:*
 
 * the `BroadcastChannel` interface is the message port – the equivalent of `MessagePort`
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
-* no reply ports – `e.ports`; not implemented in BroadcastChannel
+* no reply ports; `e.ports` is empty; not implemented in BroadcastChannel
 
 #### 3. WebSocket
 
@@ -77,7 +77,7 @@ WebSocket ──► MessageEvent (e)
 
 * the `WebSocket` interface is partly a message port (having `addEventListener()`) and partly not (no `postMessage()`)
 * messages (`e`) arrive as `message` events ([`MessageEvent`](https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent))
-* no reply ports – `e.ports`; not implemented in WebSocket
+* no reply ports; `e.ports` is empty; not implemented in WebSocket
 * no API parity with `MessagePort` / `BroadcastChannel` in all
 
 ### (b) The Port+ Equivalent
@@ -85,14 +85,14 @@ WebSocket ──► MessageEvent (e)
 #### 1. MessageChannelPlus
 
 ```
-MessageChannelPlus (ch)
-  ├─ ch.port1+ ──► MessageEventPlus (e) ──► e.ports+
-  └─ ch.port2+ ──► MessageEventPlus (e) ──► e.ports+
+MessageChannelPlus (mch)
+  ├─ mch.port1+ ──► MessageEventPlus (e) ──► e.ports+
+  └─ mch.port2+ ──► MessageEventPlus (e) ──► e.ports+
 ```
 
 *In this structure:*
 
-* `ch.port1+` and `ch.port2+` are Port+ interfaces (`MessagePortPlus`)
+* `mch.port1+` and `mch.port2+` are Port+ interfaces (`MessagePortPlus`)
 * messages arrive as `MessageEventPlus`
 * `e.ports+` recursively expose Port+ interfaces
 * reply ports support advanced features (requests, live objects, relays)
@@ -100,7 +100,7 @@ MessageChannelPlus (ch)
 #### 2. BroadcastChannelPlus
 
 ```
-BroadcastChannelPlus (br) ──► MessageEventPlus (e) ──► e.ports+
+BroadcastChannelPlus (brc) ──► MessageEventPlus (e) ──► e.ports+
 ```
 
 *In this structure:*
@@ -193,8 +193,8 @@ Meaning: Port+ interfaces emit `MessageEventPlus`, which recursively exposes Por
 The APIs below are the entry points to a Port+-based messaging system.
 
 ```js
-const ch = new MessageChannelPlus();
-const br = new BroadcastChannelPlus('channel-name');
+const mch = new MessageChannelPlus();
+const brc = new BroadcastChannelPlus('channel-name');
 const soc = new WebSocketPort(url); // or new WebSocketPort(ws)
 ```
 
@@ -257,7 +257,7 @@ In live mode, continuity of the original object is achieved. Every mutation on t
 
 ```js
 setInterval(() => {
-    Observer.set(state, 'count', state.count++;
+    Observer.set(state, 'count', state.count + 1;
 }, 1000);
 ```
 
@@ -297,7 +297,7 @@ const stop = port.projectMutations({
 });
 
 setInterval(() => {
-    Observer.set(state, 'count', state.count++);
+    Observer.set(state, 'count', state.count + 1);
 }, 1000);
 ```
 
@@ -377,16 +377,6 @@ await port.readyStateChange('close');
 > [!TIP]
 > The `readyState` property reflects the current state as a descriptive value (e.g. `'closed'`), while `readyStateChange()` listens for lifecycle transitions using event-style names (e.g. `'close'`).
 
-<!--
-These transitions are driven by **control messages**, not by synthetic events.
-
-> **Note**
-> While a `close` event may be dispatched for convenience, manually dispatching a `close` event does not close a port.
-> Code that depends on actual port closure should always rely on `readyState` or `readyStateChange('close')`.
-
----
--->
-
 ### Ready-State by Interaction
 
 In Port+, being "open" for messages is a special phase in the lifecycle model. It is designed to guarantee the readiness of the other end of the port – rather than the readiness of the port itself. A port transitions to this state when it has ascertained that the other end is ready to interact – not just alive. Messages sent at this point are more likely to be read by "someone".
@@ -439,20 +429,6 @@ Each side transitions to the `open` state when:
 
 The port is closed when either side is closed explicitly via `.close()`. Once either side closes, a signal is sent to the other side that closes it automatically. A `"close"` event is fired in each case, and ready state transitions to `closed`.
 
-#### Supported Options
-
-```js
-new MessageChannelPlus({
-    autoStart: true,
-    postAwaitsOpen: false
-});
-```
-
-| Option           | Description                                           |
-| ---------------- | ----------------------------------------------------- |
-| `autoStart`      | Automatically initiate handshake on first interaction |
-| `postAwaitsOpen` | Queue messages until the port is `open`               |
-
 ### BroadcastChannelPlus
 
 Broadcast channels form a many-to-many port topology and require additional coordination to make readiness meaningful.
@@ -490,7 +466,7 @@ const client2 = new BroadcastChannelPlus('room', {
 });
 ```
 
-The server, or any client, can join in any order, but the server:
+Both server and clients can join the channel in any order, but the server:
 
 + maintains a reference to all connected clients
 + automatically closes all clients when closed
@@ -500,25 +476,7 @@ By contrast, a client:
 
 * closes alone when closed
 
-This mode enables authoritative coordination patterns such as hubs, lobbies, and control planes.
-
-#### Supported Options
-
-```js
-new BroadcastChannelPlus('name', {
-    autoStart: true,
-    postAwaitsOpen: false,
-    clientServerMode: 'server',
-    autoClose: true
-});
-```
-
-| Option             | Description                                   |
-| ------------------ | --------------------------------------------- |
-| `autoStart`        | Begin handshake on first interaction          |
-| `postAwaitsOpen`   | Queue messages until readiness                |
-| `clientServerMode` | `'server'`, `'client'`, or `null`             |
-| `autoClose`        | Auto-close server when all clients disconnect |
+This mode exists because BroadcastChannel’s native semantics do not provide coordinated teardown or authoritative control. Without it, participants cannot reliably know when a session has ended. Client/server mode enables explicit ownership, deterministic shutdown, and presence-aware coordination over a many-to-many transport.
 
 ### WebSocketPort
 
@@ -552,32 +510,16 @@ In this mode, each side transitions to the `open` state when:
 
 This allows WebSocketPort to behave identically to MessagePortPlus and BroadcastChannelPlus with respect to readiness and cleanup.
 
-#### Supported Options
-
-```js
-new WebSocketPort(ws, {
-    autoStart: true,
-    naturalOpen: true,
-    postAwaitsOpen: false
-});
-```
-
-| Option           | Description                          |
-| ---------------- | ------------------------------------ |
-| `autoStart`      | Begin handshake on first interaction |
-| `naturalOpen`    | Use WebSocket transport readiness    |
-| `postAwaitsOpen` | Queue messages until readiness       |
-
 ### Lifecycle Inheritance
 
-Ports created via `event.ports` inherit:
+Ports created via `port.channel()` and ports exposed via `event.ports` inherit:
 
 * `autoStart`
 * `postAwaitsOpen`
 
 from their parent port.
 
-These reply ports follow a symmetric, point-to-point lifecycle. Closing either side closes the other.
+These ports follow a symmetric, point-to-point lifecycle. Closing either side closes the other.
 
 ### Practical Use
 
@@ -636,8 +578,6 @@ star.addEventListener('message', (e) => {
 });
 ```
 
-The star does **not** forward this message back down to sibling ports. Bubbling is upward only.
-
 ##### Outbound (Fan-Out)
 
 A `.postMessage()` call on the star port is a `.postMessage()` call to all connected ports:
@@ -664,7 +604,7 @@ This makes `StarPort` a true proxy: a single observable endpoint over many indep
 
 A `RelayPort` is a **router** that forwards messages *between sibling ports*.
 
-Unlike `StarPort`, it does **not** observe messages itself.
+It is an extension of `StarPort` and inherits all of its properties, methods, and behaviors.
 
 ```js
 const relay = new RelayPort('room');
@@ -684,14 +624,10 @@ As with every port, when a connected port receives a message from its remote pee
 port1.dispatchEvent(new MessageEventPlus(data));
 ```
 
-The relay:
-
-1. intercepts the message
-2. forwards it to **all other connected ports** excluding the originating port
-3. does **not** dispatch the message on itself
-
-This creates peer-to-peer fan-out without a central observer.
+Bubbling behaviour works as with a star port. In addition, the relay forwards it to **all other connected ports** as a `.postMessage()` call – excluding the originating port.
 Each connected port sees the message as if it were sent directly by its peer.
+
+This creates peer-to-peer fan-out.
 
 ##### Outbound Broadcast
 
@@ -701,14 +637,7 @@ As with a star port, a `.postMessage()` call on the relay port is a `.postMessag
 relay.postMessage(data);
 ```
 
-* sends `data` to all connected ports
-* identical outbound behavior to `StarPort`
-
-##### No Bubbling
-
-* Messages from child ports **do not bubble**
-* `relay.addEventListener('message')` does not receive routed messages
-* The relay exists only to **forward**, not to consume
+`RelayPort` has identical outbound behavior to `StarPort`.
 
 ##### Join / Leave Signaling
 
@@ -722,16 +651,6 @@ This enables presence-aware systems (e.g. chat rooms).
 * collaborative sessions
 * event fan-out
 * decoupled peer coordination
-
-### Comparing StarPort and RelayPort
-
-| Behavior                | StarPort           | RelayPort         |
-| ----------------------- | ------------------ | ----------------- |
-| Receives child messages | Yes (via bubbling) | No                |
-| Forwards child messages | No                 | Yes (to siblings) |
-| Self observes messages  | Yes                | No                |
-| Excludes sender         | N/A                | Yes               |
-| Primary role            | Proxy / aggregator | Router / switch   |
 
 ### `port.channel()`
 
@@ -969,32 +888,274 @@ It is the foundation for collaborative state, projections, and reactive coordina
 
 ## API Reference
 
+This section defines the **formal API contract** for Port+.
+Conceptual behavior, lifecycle semantics, and usage patterns are documented in earlier sections.
+
+1. `MessagePortPlus` (Base & Concrete Interfaces)
+2. `MessageEventPlus`
+
+### 1. `MessagePortPlus` (Base & Concrete Interfaces)
+
+All Port+ implementations – `MessagePortPlus`, `BroadcastChannelPlus`, `WebSocketPort`, `StarPort`, `RelayPort` – conform to the `MessagePortPlus` interface.
+
+### Port-Specific Constructor Options
+
++ `MessageChannelPlus`
++ `BroadcastChannelPlus`
++ `WebSocketPort`
++ `StarPort`
++ `RelayPort`
+
+#### `MessageChannelPlus`
+
+```js
+new MessageChannelPlus({
+    autoStart?: boolean,
+    postAwaitsOpen?: boolean
+});
+```
+
+| Option           | Default | Description                                           |
+| ---------------- | ------- | ----------------------------------------------------- |
+| `autoStart`      | `true`  | Automatically initiate handshake on first interaction |
+| `postAwaitsOpen` | `false` | Queue messages until the port is `open`               |
+
+#### `BroadcastChannelPlus`
+
+```js
+new BroadcastChannelPlus(name, {
+    autoStart?: boolean,
+    postAwaitsOpen?: boolean,
+    clientServerMode?: 'server' | 'client' | null,
+    autoClose?: boolean
+});
+```
+
+| Option             | Default | Description                                   |
+| ------------------ | ------- | --------------------------------------------- |
+| `autoStart`        | `true`  | Begin handshake on first interaction          |
+| `postAwaitsOpen`   | `false` | Queue messages until readiness                |
+| `clientServerMode` | `null`  | Can be one of `'server'`, `'client'` or `null` |
+| `autoClose`        | `true` | Auto-close server when all clients disconnect |
+
+#### `WebSocketPort`
+
+```js
+new WebSocketPort(wsOrUrl, {
+    autoStart?: boolean,
+    naturalOpen?: boolean,
+    postAwaitsOpen?: boolean
+});
+```
+
+| Option           | Default | Description                          |
+| ---------------- | ------- | ------------------------------------ |
+| `autoStart`      | `true`  | Begin handshake on first interaction |
+| `naturalOpen`    | `true`  | Use WebSocket transport readiness instead of Port+ interaction-based ready state |
+| `postAwaitsOpen` | `false` | Queue messages until readiness       |
+
+#### `StarPort`
+
+```js
+new StarPort({
+    autoStart?: boolean,
+    postAwaitsOpen?: boolean,
+    autoClose?: boolean
+});
+```
+
+| Option           | Default | Description                          |
+| ---------------- | ------- | ------------------------------------ |
+| `autoStart`      | `true`  | Igonred for self. Inherited by `.channel()` ports |
+| `postAwaitsOpen` | `false` | Queue messages until readiness       |
+| `autoClose`      | `true`  | Auto-close server when all clients disconnect |
+
+#### `RelayPort`
+
+```js
+new RelayPort(channelSpec?, {
+    autoStart?: boolean,
+    postAwaitsOpen?: boolean,
+    autoClose?: boolean
+});
+```
+
+| Option           | Default | Description                          |
+| ---------------- | ------- | ------------------------------------ |
+| `autoStart`      | `true`  | Igonred for self. Inherited by `.channel()` ports |
+| `postAwaitsOpen` | `false` | Queue messages until readiness       |
+| `autoClose`      | `true`  | Auto-close server when all clients disconnect |
+
+### Lifecycle API
+
+* `start()`
+* `close()`
+* `readyState`
+* `readyStateChange()`
+
+#### `start(): void`
+
+Explicitly initiates the interaction handshake.
+
+* Required when `autoStart` is `false`
+* Signals readiness to the remote side
+
+#### `close(): void`
+
+Closes the port.
+
+* Sends a control close signal
+* Triggers teardown of dependent ports and projections
+* Transitions `readyState` to `closed`
+
+#### `readyState: 'connecting' | 'open' | 'closed'`
+
+Current lifecycle state of the port.
+
+#### `readyStateChange(state: 'open' | 'close' | 'messaging'): Promise<void>`
+
+Resolves when the port transitions into the specified state.
+
+* `'open'`: handshake completed
+* `'messaging'`: first outbound message sent
+* `'close'`: port fully closed
+
+> [!TIP]
+>
+> This is the recommended way to listen for port lifecycle changes compared to using `addEventListener('close', ...)`.
+> While a corresponding `open` and `close` events are dispatched at the same time as the `readyStateChange` promise, those events may also be simulated manually via `dispatchEvent()` or `postMessage()`. By contrast, `readyStateChange` is system-managed.
+> Code that depends on port lifecycle changes should always rely on `readyState` or `readyStateChange()`.
+
+### Messaging API
+
++ `postMessage()`
++ `postRequest()`
++ `addEventListener()`
++ `addRequestListener()`
+
+#### `postMessage(data: any, options?): void`
+
+Sends a message over the port. `options` are:
+
+| Option     | Type    | Description                               |
+| ---------- | ------- | ----------------------------------------- |
+| `type`     | string  | Message event type (default: `'message'`) |
+| `live`     | boolean | Enable live object projection             |
+| `transfer` | Array   | Transferable objects                      |
+
+#### `postRequest(data: any, options?): Promise<any>`
+
+Sends a request and awaits a response. `options` are:
+
+| Option    | Type        | Description                           |
+| --------- | ----------- | ------------------------------------- |
+| `timeout` | number      | Reject if no response within duration |
+| `signal`  | AbortSignal | Abort the request                     |
+
+* Rejects automatically if the port closes
+* Uses a private ephemeral reply channel internally
+
+#### `addEventListener(type: string, handler, options?): void`
+
+Registers a handler for a specific message type. `options` are:
+
+| Option    | Type        | Description                           |
+| --------- | ----------- | ------------------------------------- |
+| `once`    | boolean     | Remove listener after first invocation |
+| `signal`  | AbortSignal | Abort the request                     |
+
+Receives `MessageEventPlus` instances.
+
+#### `addRequestListener(type: string, handler, options?): void`
+
+Registers a request handler for a specific message type. `options` are:
+
+| Option    | Type        | Description                           |
+| --------- | ----------- | ------------------------------------- |
+| `once`    | boolean     | Remove listener after first invocation |
+| `signal`  | AbortSignal | Abort the request                     |
+
+* Return value (or resolved promise) is sent as the response
+* Thrown errors reject the requester
+
+### Structuring & Routing
+
++ `channel()`
++ `relay()`
+
+#### `channel(name: string): MessagePortPlus`
+
+Creates a logical sub-port scoped to a message namespace.
+
+* Filters inbound messages
+* Tags outbound messages
+* Shares lifecycle with the parent port
+
+Ports created via `port.channel()` (and ports exposed via `event.ports`) inherit:
+
+* `autoStart`
+* `postAwaitsOpen`
+
+from their parent port.
+
+#### `relay(config): () => void`
+
+Establishes explicit routing between ports. `config` is:
+
+| Config Option    | Type            | Description               |
+| ---------------- | --------------- | ------------------------- |
+| `to`             | MessagePortPlus | Target port               |
+| `channel`        | string | object | Channel filter            |
+| `bidirectional`  | boolean         | Relay in both directions  |
+| `resolveMessage` | function        | Transform message payload |
+
+If `channel` is specified, it may be a string or a `{ from, to }` mapping. Only messages of the specified channel are relayed. If specified as a `from` -> `to` mapping, incoming messages are matched for `from` and outgoing messages are namespaced with `to` – effectively a channel mapping.
+
+Returns a cleanup function that removes the relay.
+
+### Live State Projection
+
++ `projectMutations()`
+
+#### `projectMutations(options): () => void`
+
+Projects mutations between objects across a port. `options` are:
+
+| Option | Type            | Description                |
+| ------ | --------------- | -------------------------- |
+| `from` | object | string | Source object or shared ID |
+| `to`   | string | object | Target ID or local object  |
+
+* Must be called on **both ends** with complementary `from` / `to`
+* Returns a function that terminates the projection
+
+### 2. `MessageEventPlus`
+
+All message events dispatched by Port+ ports.
+
+#### Properties
+
+| Property      | Type            | Description                     |
+| ------------- | ------------------------------- |
+| `data`        | any | Message payload                 |
+| `type`        | string | Event type                      |
+| `eventID`     | string | Stable message identifier       |
+| `ports`       | `MessagePortPlus[]` | Reply ports. Each instance inherits `autoStart` and `postAwaitsOpen`. Closing either side closes the other.                     |
+| `live`        | boolean | Indicates a live object payload |
+| `relayedFrom` | `MessagePortPlus` | Originating port (if routed)    |
+
 #### Methods
 
-**`postMessage(message, [options])`**
-Sends a message.
-*   `options.transfer` (Array): Transferables.
-*   `options.live` (Boolean): If true, observers `message` for mutations.
-*   `options.type` (String): Custom event type (default `message`).
+| Method          | Description                     |
+| --------------- | ------------------------------- |
+| `respondWith()` | Sends a response through attached reply ports. `data` and `options` are as is with `postMessage`. |
 
-**`postRequest(message, [options])`**
-Sends a message and awaits a reply.
-*   Returns: `Promise<any>`.
-*   `options.timeout` (Number): Timeout in ms.
-*   `options.signal` (AbortSignal): Abort the request.
+#### `respondWith(data, options?): boolean`
 
-**`addRequestListener(type, handler)`**
-Registers a handler that returns a value to the caller.
-*   `handler`: `(event) => result | Promise<result>`
+Sends a response through attached reply ports. `data` and `options` are as is with `postMessage`.
 
-**`relay(config)`**
-Forwards messages.
-*   `config.to` (Port): Target port.
-*   `config.types` (String|Array): Event types to forward (default `*`).
-*   `config.bidirectional` (Boolean): If true, also relays `to -> from`.
+Returns `true` if one or more reply ports were present.
 
-**`channel(name)`**
-Returns a `MessagePort` instance that is virtually isolated under `name`.
 
 ---
 

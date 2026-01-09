@@ -1,4 +1,9 @@
-import { MessagePortPlus, _meta, _options } from './MessagePortPlus.js';
+import {
+    MessagePortPlus,
+    _meta,
+    _options,
+    getReadyStateInternals,
+} from './MessagePortPlus.js';
 
 export class StarPort extends MessagePortPlus {
 
@@ -8,13 +13,20 @@ export class StarPort extends MessagePortPlus {
 
     [Symbol.iterator]() { return this.#ports[Symbol.iterator](); }
 
-    constructor({ autoClose = true } = {}) {
-        super({ autoStart: false, postAwaitsOpen: true, autoClose });
+    constructor({ autoStart = true, postAwaitsOpen = false, autoClose = true } = {}) {
+        super({ autoStart, postAwaitsOpen, autoClose });
     }
 
     addPort(portPlus, { enableBubbling = true } = {}) {
         if (!(portPlus instanceof MessagePortPlus)) {
             throw new TypeError('Port must be a WQMessagePort instance.');
+        }
+
+        const readyStateInternals = getReadyStateInternals.call(this);
+
+        if (readyStateInternals.close.state) {
+            const starPortName = this.constructor.name;
+            throw new Error(`Cannot add port to ${starPortName}. ${starPortName} is closed.`);
         }
 
         if (this.#ports.has(portPlus)) return;
@@ -34,7 +46,7 @@ export class StarPort extends MessagePortPlus {
 
         const cleanup = () => {
             if (!this.#ports.has(portPlus)) return;
-            
+
             this.#ports.delete(portPlus);
 
             if (enableBubbling
@@ -66,9 +78,27 @@ export class StarPort extends MessagePortPlus {
         }
     }
 
+    _autoStart() {} // Must be present to do nothing
+
+    start() {
+        const readyStateInternals = getReadyStateInternals.call(this);
+
+        if (readyStateInternals.open.state) return;
+        readyStateInternals.open.state = true;
+
+        readyStateInternals.open.resolve(this);
+    }
+
     close(...args) {
+        const readyStateInternals = getReadyStateInternals.call(this);
+
+        if (readyStateInternals.close.state) return;
+        readyStateInternals.close.state = true;
+
         for (const portPlus of this.#ports) {
             portPlus.close?.(...args);
         }
+
+        readyStateInternals.close.resolve(this);
     }
 }
