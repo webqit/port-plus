@@ -54,4 +54,8 @@ export class WebSocketPort extends MessagePortPlusMockPortsMixin(EventTarget) {
             this.#ws.send(JSON.stringify(payload), portOptions);
         });
     }
+
+    _close() {
+        this.#ws.close();
+    }
 }
