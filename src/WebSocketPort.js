@@ -7,6 +7,7 @@ import {
 export class WebSocketPort extends MessagePortPlusMockPortsMixin(EventTarget) {
 
     #ws;
+    #wsReady;
 
     constructor(ws, { autoStart = true, naturalOpen = true, postAwaitsOpen = false } = {}) {
         super();
@@ -23,6 +24,13 @@ export class WebSocketPort extends MessagePortPlusMockPortsMixin(EventTarget) {
             && this.#ws.readyState === WebSocket.OPEN) {
             this.start();
         }
+        this.#wsReady = new Promise((resolve) => {
+            if (this.#ws.readyState === WebSocket.OPEN) {
+                resolve();
+            } else {
+                this.#ws.addEventListener('open', resolve);
+            }
+        });
         if (this.#ws.readyState === WebSocket.CLOSED) {
             try { this.close(); } catch(e) {}
         }
@@ -42,6 +50,8 @@ export class WebSocketPort extends MessagePortPlusMockPortsMixin(EventTarget) {
     }
 
     __postMessage(payload, portOptions) {
-        this.#ws.send(JSON.stringify(payload), portOptions);
+        this.#wsReady.then(() => {
+            this.#ws.send(JSON.stringify(payload), portOptions);
+        });
     }
 }
