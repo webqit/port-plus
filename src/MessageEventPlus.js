@@ -50,8 +50,7 @@ export class MessageEventPlus extends MessageEvent {
         this.#honourDoneMutationFlags = honourDoneMutationFlags;
 
         this.#ports = ports;
-        const options = this.#originalTarget && _options(this.#originalTarget) || {};
-        this.#ports.forEach((port) => MessagePortPlus.upgradeInPlace(port, { autoStart: options.autoStart, postAwaitsOpen: options.postAwaitsOpen }));
+        this.#ports.forEach((port) => MessagePortPlus.upgradeInPlace(port));
 
         if (_isTypeObject(this.#data) && this.#live) {
             if (typeof eventID !== 'string') {

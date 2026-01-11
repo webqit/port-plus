@@ -29,10 +29,18 @@ const portPlusProps = [
 
 export class MessagePortPlus extends MessagePortPlusMixin(EventTarget) {
 
-    constructor(options = {}) {
+    constructor({ handshake = 0, postAwaitsOpen = false, ...options } = {}) {
+        if (typeof handshake !== 'number') {
+            throw new Error('handshake must be a number');
+        }
+        if (handshake < 0 || handshake > 2) {
+            throw new Error('handshake must be between 0 and 2');
+        }
+
         super();
+
         const portPlusMeta = _wq(this, 'meta');
-        portPlusMeta.set('options', options);
+        portPlusMeta.set('options', { handshake, postAwaitsOpen, ...options });
     }
 
     static [Symbol.hasInstance](instance) {
@@ -47,9 +55,16 @@ export class MessagePortPlus extends MessagePortPlusMixin(EventTarget) {
 export function MessagePortPlusMixin(superClass) {
     return class extends superClass {
 
-        static upgradeInPlace(port, options = {}) {
+        static upgradeInPlace(port, { handshake = 0, postAwaitsOpen = false } = {}) {
             if (port instanceof MessagePortPlus) {
                 return port;
+            }
+
+            if (typeof handshake !== 'number') {
+                throw new Error('handshake must be a number');
+            }
+            if (handshake < 0 || handshake > 2) {
+                throw new Error('handshake must be between 0 and 2');
             }
 
             const proto = this.prototype;
@@ -71,9 +86,12 @@ export function MessagePortPlusMixin(superClass) {
             }
 
             const portPlusMeta = _wq(port, 'meta');
-            portPlusMeta.set('options', options);
+            portPlusMeta.set('options', { handshake, postAwaitsOpen });
 
             this.upgradeEvents(port);
+
+            if (handshake === 0) port.start();
+
             return port;
         }
 
@@ -115,28 +133,34 @@ export function MessagePortPlusMixin(superClass) {
 
                 if (e.data.ping === 'connect'
                     && typeof e.data?.['.wq']?.eventID === 'string'
-                    && (!(port instanceof WebSocket) || !options.naturalOpen)) {
+                    && (!(port instanceof WebSocket) || options.handshake)) {
                     // This is a special ping from a MessagePort or BroadcastChannel instance
                     // that helps us simulate an "open" event
-                    // If !options.naturalOpen, WebSockets too
+                    // If options.handshake !== 0, WebSockets too
 
-                    let reply = true;
+                    const nowOpen = options.handshake === 0
+                        || portPlusMeta.get('start.called');
+
+                    const reply = { isOpen: nowOpen };
 
                     if (port instanceof BroadcastChannel) {
                         if (options.clientServerMode === 'server'
                             && typeof e.data.id === 'string') {
                             portPlusMeta.get('clients').add(e.data.id);
-                            reply = 'server';
+                            reply.id = 'server';
                         } else if (e.data.id === 'server'
                             && portPlusMeta.has('client_id')) {
-                            reply = portPlusMeta.get('client_id');
+                            reply.id = portPlusMeta.get('client_id');
                         }
                     }
 
                     e.ports?.forEach((p) => p.postMessage(reply));
 
-                    portPlusMeta.set('remote.start.called', true);
-                    portPlus.start();
+                    if (nowOpen) {
+                        portPlusMeta.set('remote.open.called', true);
+                        portPlus.start();
+                    }
+
                     return;
                 }
 
@@ -195,46 +219,19 @@ export function MessagePortPlusMixin(superClass) {
                 portPlus.dispatchEvent(eventPlus);
             };
 
-            // ------------- OPEN
-
-            const openHandler = (e) => {
-                // Native "open" event fired by WebSocket
-                if (port instanceof WebSocket
-                    && options.naturalOpen
-                    && !(e instanceof MessageEventPlus)) {
-                    portPlusMeta.set('remote.start.called', true);
-                    portPlus.start();
-                }
-            };
-
-            // ------------- CLOSE
-
-            const closeHandler = (e) => {
-                // Native "close" events fired by MessagePort and WebSocket
-                if ((port instanceof WebSocket || port instanceof MessagePort)
-                    && !(e instanceof MessageEventPlus)) {
-                    portPlusMeta.set('remote.close.called', true);
-                    portPlus.close();
-                }
-            };
-
             rawPortMeta.set('internal_call', true);
             port.addEventListener('message', messageHandler);
             port.addEventListener('error', messageHandler);
-            port.addEventListener('open', openHandler);
-            port.addEventListener('close', closeHandler);
             rawPortMeta.delete('internal_call');
-
-            rawPortMeta.set('events+', true);
 
             garbageCollection.add(() => {
                 port.removeEventListener('message', messageHandler);
                 port.removeEventListener('error', messageHandler);
-                port.removeEventListener('open', openHandler);
-                port.removeEventListener('close', closeHandler);
 
                 rawPortMeta.set('events+', false);
             });
+
+            rawPortMeta.set('events+', true);
         }
 
         get options() { return { ..._options(this) }; }
@@ -282,11 +279,9 @@ export function MessagePortPlusMixin(superClass) {
         }
 
         set onmessage(v) {
-            // Auto-start?
-            this._autoStart();
-
             if (typeof super.onmessage !== 'undefined') {
                 super.onmessage = v;
+                this._autoStart();
                 return;
             }
 
@@ -296,18 +291,17 @@ export function MessagePortPlusMixin(superClass) {
 
             if (Object.getOwnPropertyDescriptor(this, '_onmessage')?.set) {
                 this._onmessage = v;
+                this._autoStart();
                 return;
             }
 
             if (this._onmessage) this.removeEventListener('message', this._onmessage);
             this.addEventListener('message', v);
             this._onmessage = v;
+            this._autoStart();
         }
 
         addEventListener(...args) {
-            // Auto-start?
-            this._autoStart();
-
             // Add to registry 
             const garbageCollection = getGarbageCollection.call(this);
             garbageCollection.add(() => {
@@ -317,9 +311,11 @@ export function MessagePortPlusMixin(superClass) {
             });
 
             // Execute addEventListener()
-            return this._addEventListener
+            const returnValue = this._addEventListener
                 ? this._addEventListener(...args)
                 : super.addEventListener(...args);
+            this._autoStart();
+            return returnValue;
         }
 
         dispatchEvent(event) {
@@ -334,7 +330,6 @@ export function MessagePortPlusMixin(superClass) {
         }
 
         postMessage(message, transferOrOptions = {}) {
-            // Auto-start?
             this._autoStart();
 
             // Update readyState
@@ -455,21 +450,21 @@ export function MessagePortPlusMixin(superClass) {
             };
         }
 
-        channel(channelSpec, resolveMessage = null) {
+        channel(channelSpec, resolveMessage = null, { handshake = 0, postAwaitsOpen = false } = {}) {
             const channel = new MessageChannel;
 
-            MessagePortPlus.upgradeInPlace(channel.port1, { autoStart: this.options.autoStart, postAwaitsOpen: this.options.postAwaitsOpen });
-            MessagePortPlus.upgradeInPlace(channel.port2, { autoStart: this.options.autoStart, postAwaitsOpen: this.options.postAwaitsOpen });
+            MessagePortPlus.upgradeInPlace(channel.port1, { handshake, postAwaitsOpen });
+            MessagePortPlus.upgradeInPlace(channel.port2, { handshake, postAwaitsOpen });
 
             const garbageCollection = getGarbageCollection.call(this);
-            garbageCollection.add(this.relay({ channel: channelSpec, to: channel.port1, bidirectional: true, resolveMessage }));
+            garbageCollection.add(this.relay({ channel: channelSpec, to: channel.port2, bidirectional: true, resolveMessage }));
 
-            channel.port1.start();
+            channel.port2.start();
             this.readyStateChange('close').then(() => {
-                channel.port1.close();
+                channel.port2.close();
             });
 
-            return channel.port2;
+            return channel.port1;
         }
 
         projectMutations({ from, to, ...options }) {
@@ -509,7 +504,7 @@ export function MessagePortPlusMixin(superClass) {
             const portPlusMeta = _meta(this);
             const options = _options(this);
             if (!portPlusMeta.get('internal_call')
-                && options.autoStart) {
+                && options.handshake === 1) {
                 this.start();
             }
         }
@@ -518,30 +513,29 @@ export function MessagePortPlusMixin(superClass) {
             const readyStateInternals = getReadyStateInternals.call(this);
             if (readyStateInternals.open.state) return;
 
-            let messageChannel;
-
-            const readyStateOpen = () => {
-                if (readyStateInternals.open.state) return;
-                readyStateInternals.open.state = true;
-                readyStateInternals.open.resolve(this);
-
-                const openEvent = new MessageEventPlus(null, { type: 'open' });
-                this._dispatchEvent
-                    ? this._dispatchEvent(openEvent)
-                    : super.dispatchEvent(openEvent);
-
-                messageChannel?.port1.close();
-                messageChannel?.port2.close();
-            };
-
             const portPlusMeta = _meta(this);
             const options = _options(this);
 
-            if (portPlusMeta.get('remote.start.called')) {
-                readyStateOpen();
+            const readyStateOpen = (nowOpen) => {
+                if (nowOpen) {
+                    readyStateInternals.open.state = true;
+                    readyStateInternals.open.resolve(this);
+                }
+                const handshakeChannel = portPlusMeta.get('handshake_channel');
+                setTimeout(() => {
+                    handshakeChannel?.port1.close();
+                    handshakeChannel?.port2.close();
+                    portPlusMeta.delete('handshake_channel');
+                }, 100);
+            };
+
+            // A peer ping triggered us to open
+            if (portPlusMeta.get('remote.open.called')) {
+                readyStateOpen(true);
                 return;
             }
 
+            // Start was explicitly called
             if (portPlusMeta.get('start.called')) return;
             portPlusMeta.set('start.called', true);
 
@@ -549,16 +543,26 @@ export function MessagePortPlusMixin(superClass) {
                 ? this._start()
                 : super.start?.();
 
-            messageChannel = new MessageChannel;
+            // No handshake?
+            if (options.handshake === 0) {
+                readyStateOpen(true);
+                return;
+            }
 
-            messageChannel.port1.onmessage = (e) => {
+            const handshakeChannel = new MessageChannel;
+            portPlusMeta.set('handshake_channel', handshakeChannel);
+
+            handshakeChannel.port1.onmessage = (e) => {
                 if (this instanceof BroadcastChannel
                     && options.clientServerMode === 'server'
-                    && typeof e.data === 'string') {
+                    && typeof e.data?.id === 'string') {
                     // Register clients that replied
-                    portPlusMeta.get('clients').add(e.data);
+                    portPlusMeta.get('clients').add(e.data.id);
                 }
-                readyStateOpen();
+                if (typeof e.data?.isOpen) {
+                    // This peer is ready to start messaging
+                    readyStateOpen(true);
+                } else readyStateOpen(false);
             };
 
             const { wqOptions } = preProcessPostMessage.call(this);
@@ -567,8 +571,8 @@ export function MessagePortPlusMixin(superClass) {
             const pingData = { ['.wq']: wqOptions, ping: 'connect', id };
 
             this._postMessage
-                ? this._postMessage(pingData, { transfer: [messageChannel.port2] })
-                : super.postMessage(pingData, { transfer: [messageChannel.port2] });
+                ? this._postMessage(pingData, { transfer: [handshakeChannel.port2] })
+                : super.postMessage(pingData, { transfer: [handshakeChannel.port2] });
         }
 
         close(...args) {
@@ -580,7 +584,8 @@ export function MessagePortPlusMixin(superClass) {
             const portPlusMeta = _meta(this);
             const options = _options(this);
 
-            if (!portPlusMeta.get('remote.close.called')
+            if (options.handshake > 0
+                && !portPlusMeta.get('remote.close.called')
                 && (this instanceof BroadcastChannel || this instanceof MessagePort)) {
 
                 const { wqOptions } = preProcessPostMessage.call(this);
@@ -603,11 +608,6 @@ export function MessagePortPlusMixin(superClass) {
                 : super.close(...args);
 
             readyStateInternals.close.resolve(this);
-
-            const openEvent = new MessageEventPlus(null, { type: 'close' });
-            this._dispatchEvent
-                ? this._dispatchEvent(openEvent)
-                : super.dispatchEvent(openEvent);
 
             garbageCollect.call(this);
         }
@@ -831,6 +831,7 @@ export function publishMutations(message, eventID, { signal, withArrayMethodDesc
 
         if (mutationsDone) dispose.abort();
     };
+
 
     const dispose = Observer.observe(message, Observer.subtree(), mutationHandler, { signal, withArrayMethodDescriptors });
     const garbageCollection = getGarbageCollection.call(this);

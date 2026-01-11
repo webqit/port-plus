@@ -8,13 +8,16 @@ import {
 export class StarPort extends MessagePortPlus {
 
     #ports = new Set;
+    #startCalled = false;
+    #closeCalled = false;
 
     get length() { return this.#ports.size; }
 
     [Symbol.iterator]() { return this.#ports[Symbol.iterator](); }
 
-    constructor({ autoStart = true, postAwaitsOpen = false, autoClose = true } = {}) {
-        super({ autoStart, postAwaitsOpen, autoClose });
+    constructor({ handshake = 0, postAwaitsOpen = false, autoClose = false } = {}) {
+        super({ handshake, postAwaitsOpen, autoClose });
+        if (handshake === 0) this.start();
     }
 
     addPort(portPlus, { enableBubbling = true } = {}) {
@@ -24,7 +27,7 @@ export class StarPort extends MessagePortPlus {
 
         const readyStateInternals = getReadyStateInternals.call(this);
 
-        if (readyStateInternals.close.state) {
+        if (this.#closeCalled || readyStateInternals.close.state) {
             const starPortName = this.constructor.name;
             throw new Error(`Cannot add port to ${starPortName}. ${starPortName} is closed.`);
         }
@@ -41,8 +44,17 @@ export class StarPort extends MessagePortPlus {
             portPlusMeta.set('parentNode', this); // @ORDER: 2
         }
 
-        portPlus.readyStateChange('open').then(() => this.start());
-        portPlus.readyStateChange('close').then(cleanup);
+        if (this.options.handshake) {
+            portPlus.readyStateChange('open').then(() => {
+                readyStateInternals.open.state = true;
+                readyStateInternals.open.resolve(this);
+            });
+            portPlus.readyStateChange('close').then(() => cleanup());
+        }
+
+        if (this.#startCalled || readyStateInternals.open.state) {
+            portPlus.start();
+        }
 
         const cleanup = () => {
             if (!this.#ports.has(portPlus)) return;
@@ -56,7 +68,8 @@ export class StarPort extends MessagePortPlus {
 
             if (this.#ports.size === 0
                 && _options(this).autoClose) {
-                this.close();
+                readyStateInternals.close.state = true;
+                readyStateInternals.close.resolve(this);
             }
         };
 
@@ -78,33 +91,33 @@ export class StarPort extends MessagePortPlus {
         }
     }
 
-    _autoStart() { } // Must be present to do nothing
-
     start() {
-        const readyStateInternals = getReadyStateInternals.call(this);
+        if (this.#startCalled) return;
+        this.#startCalled = true;
 
-        if (readyStateInternals.open.state) return;
-        readyStateInternals.open.state = true;
+        for (const portPlus of this.#ports) {
+            portPlus.start();
+        }
 
-        readyStateInternals.open.resolve(this);
-
-        const openEvent = new MessageEventPlus(null, { type: 'open' });
-        super.dispatchEvent(openEvent);
+        if (!this.options.handshake) {
+            const readyStateInternals = getReadyStateInternals.call(this);
+            readyStateInternals.open.state = true;
+            readyStateInternals.open.resolve(this);
+        }
     }
 
     close(...args) {
-        const readyStateInternals = getReadyStateInternals.call(this);
-
-        if (readyStateInternals.close.state) return;
-        readyStateInternals.close.state = true;
+        if (this.#closeCalled) return;
+        this.#closeCalled = true;
 
         for (const portPlus of this.#ports) {
-            portPlus.close?.(...args);
+            portPlus.close(...args);
         }
 
-        readyStateInternals.close.resolve(this);
-
-        const closeEvent = new MessageEventPlus(null, { type: 'close' });
-        super.dispatchEvent(closeEvent);
+        if (!this.options.handshake) {
+            const readyStateInternals = getReadyStateInternals.call(this);
+            readyStateInternals.close.state = true;
+            readyStateInternals.close.resolve(this);
+        }
     }
 }

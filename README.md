@@ -343,17 +343,11 @@ This allows state to be treated as persistent and reactive across a messaging bo
 
 ## Lifecycles
 
-Port+ introduces a unified lifecycle model for all messaging ports.
-
-The purpose of this lifecycle is to make *interaction readiness* explicit: to know when there is someone actively listening on the other end of a port, and when that condition begins and ends.
-
-Native web messaging APIs do not expose this information consistently. WebSockets expose transport connectivity, but not as to whether the remote side is actually interacting with the connection. Message ports and broadcast channels expose no readiness signal at all.
-
-Port+ addresses this by introducing an interaction-based lifecycle that applies uniformly across all port types.
+This section covers important phases in the life of a Port+ instance. Understanding Port+ lifecycles is recommended for coordinating a Port+ messaging system.
 
 ### Lifecycle States
 
-Every Port+ instance transitions through four states in its lifetime:
+Every Port+ instance transitions through different states in its lifetime:
 
 - **`connecting`**: The port is being established or is waiting for a connection to be established.
 - **`open`**: The port is ready for interaction.
@@ -377,80 +371,108 @@ await port.readyStateChange('close');
 > [!TIP]
 > The `readyState` property reflects the current state as a descriptive value (e.g. `'closed'`), while `readyStateChange()` listens for lifecycle transitions using event-style names (e.g. `'close'`).
 
-### Ready-State by Interaction
+### Ready State by Default
 
-In Port+, being "open" for messages is a special phase in the lifecycle model. It is designed to guarantee the readiness of the other end of the port – rather than the readiness of the port itself. A port transitions to this state when it has ascertained that the other end is ready to interact – not just alive. Messages sent at this point are more likely to be read by "someone".
+Native web messaging APIs do not expose Ready State information consistently. While WebSockets expose transport-level Ready State (`connecting` -> `open` -> `closing` -> `closed`), MessagePorts and BroadcastChannels expose no readiness signal at all. Consequently, the default Ready State behaviour acorss port types is:
 
-To coordinate readiness across ports, each port is designed to self-signify readiness. The other end of the port receives this signal and acknowledges it. On a successful handshake, the port transitions to the `open` state; an `"open"` event is fired.
+| Port Type | Ready State |
+| --- | --- |
+| **`WebSocket`** | `open` (when a connection is established) -> `messaging` (when the first message is sent) -> `close` (when the connection is closed) |
+| **`MessagePort`** | `open` (immediately on instantiation) -> `messaging` (when the first message is sent) -> `close` (when the port is closed) |
+| **`BroadcastChannel`** | `open` (immediately on instantiation) -> `messaging` (when the first message is sent) -> `close` (when the channel is closed) |
 
-But a port sends a readiness signal on an explicit condition: when `.start()` is called. This is how the calling code says "I'm ready to interact". But by default, ports have an `autoStart` option enabled, which gets the port to automatically start on first interaction with:
+Here, only WebSockets can tell when the other side of the port is connected. For the others, the `open` state is really about the local end of the port itself, not about the remote end.
 
-+ `addEventListener()` – including higher level APIs that may trigger it
-+ `postMessage()` – including, also, higher level APIs that may trigger it
+Not knowing when the other side of the port is connected can be a limitation when multiple lifecycles need to be coordinated.
 
-This behaviour is called "Ready-State by Interaction". To switch from this mode to the explicit mode, set `autoStart` to `false`.
+Port+ addresses this by introducing an explicit handshake phase that applies uniformly across all port types. You opt-in via `options.handshake`:
 
 ```js
 // An example for a BroadcastChannel port
-const port = new BroadcastChannel(channel, { autoStart: false });
+const port = new BroadcastChannel(channel, { handshake: 1 });
+```
 
-port.start(); // Explicitly start the port
+`options.handshake` is a number between `0` and `2`. When `0` – the default – no handshake takes place. When `1` or `2`, the port goes through the Port+ handshake phase.
+
+### Ready-State by Handshake
+
+Port+'s handshake model is designed to guarantee the readiness of the remote end of the port – rather than the readiness of the local end itself. In this mode, the port only transitions to the `open` state after each end of the port has ascertained that the other end is ready to interact – not just alive. Messages sent at this point are more likely to be read by "someone".
+
+Either end begins the process by sending a "readinnes" signal and waits for it to be acknoledged. If the other end also acknoledges with "readinnes", both ends transitions to the `open` state. Otherwise, the originating end waits for an explicit "readinnes" signal from the other end. The transition to the `open` state happens when both ends have successfully exchanged "readinnes".
+
+A Port+ instance self-signifies "readiness" on exactly one condition: **when `.start()` is called**. It says by that: "I'm ready to interact, not just alive". The `options.handshake` parameter, however, lets you say that either explicitly or implicitly:
+
++ When `1`, handshake begins on the first interaction with:
+  + `addEventListener()` – including higher level APIs that may trigger it
+  + `postMessage()` – including, also, higher level APIs that may trigger it
+  This behaviour is called Readinnes by Interaction. 
++ When `2`, handshake begins on an explicit call to `start()`
+
+```js
+// An example for a BroadcastChannel port
+const port = new BroadcastChannel(channel, { handshake: 1 });
+
+port.addEventListener('message', handle); // Implicitly triggers start()
 ```
 
 ### Early Sends and Automatic Queuing
 
-Ports may be configured to implicitly await the `open` ready state before sending messages. In this mode, outbound messages are automatically queued until the port is ready.
+Ports may be configured to implicitly await the `open` Ready State before sending messages. In this mode, outbound messages are automatically queued until the port is `open`.
 
 ```js
 // An example for a BroadcastChannel port
-const port = new BroadcastChannel(channel, { postAwaitsOpen: true });
+const port = new BroadcastChannel(channel, { handshake: 1, postAwaitsOpen: true });
 
-port.postMessage('hello'); // queued
+port.postMessage('hello');
+// Queued until port is open.
+// But { handshake: 1 } also lets postMessage() trigger the handshake process.
+// Port is open – and messages flush – when the other end says "ready". Until then, queued
+
 await port.readyStateChange('open');
 // delivered by now
 ```
 
-This allows application code to send messages without coordinating startup order.
+This allows application code to send messages with guaranteed coordination.
 
 ---
 
-## Lifecycle by Port Type
+### Handshake by Port Type
 
-Each Port+ transport participates in the lifecycle model differently, while exposing the same observable states.
+Each Port+ transport participates in the handshake model differently, while exposing the same observable states.
 
-### MessagePortPlus via MessageChannelPlus
+#### MessagePortPlus via MessageChannelPlus
 
-Message ports follow a symmetric, point-to-point handshake.
+MessagePorts follow a symmetric, point-to-point handshake.
 
-Each side transitions to the `open` state when:
+The port transitions to the `open` state when:
 
-1. `.start()` is triggered explicitly or by interaction
-2. an acknowledgment is recieved from the other side
+1. `.start()` is triggered explicitly or by interaction – on both ends
+2. peer acknowledgment is recieved
 
-The port is closed when either side is closed explicitly via `.close()`. Once either side closes, a signal is sent to the other side that closes it automatically. A `"close"` event is fired in each case, and ready state transitions to `closed`.
+The port closes via an explicit `.close()` call on either side. Closure on one end automatically triggers closure on the other – via a control message. Ready State transitions to `closed`.
 
-### BroadcastChannelPlus
+#### BroadcastChannelPlus
 
-Broadcast channels form a many-to-many port topology and require additional coordination to make readiness meaningful.
+BroadcastChannels form a many-to-many port topology and require additional coordination to make readiness meaningful.
 
 Port+ supports two modes.
 
-#### (a) Default (Peer Mode)
+##### (a) Default (Peer Mode)
 
 In default mode, each participant becomes `open` when:
 
 1. `.start()` is triggered explicitly or by interaction
 2. an acknowledgment is recieved from at least one peer in the shared channel
 
-The port is closed when closed explicitly via `.close()`. A `"close"` event is fired in each case, and ready state transitions to `closed`.
+A participant closes via an explicit `.close()` call. Its Ready State transitions to `closed`.
 
-#### (b) Client / Server Mode
+##### (b) Client / Server Mode
 
-While readiness is synchronized in the default mode – as with other port types – termination is not, due to the many-to-many topology.
+While readiness is synchronized in the default mode – as with other port types – closure is not. A participant's closure has no effect on the others, by default.
 
-To support use cases that require synchronized termination across participants, Port+ additionally supports a client/server operational model for BroadcastChannels.
+To support use cases that require synchronized closure across participants, Port+ introduces an optional client/server operational model for BroadcastChannels.
 
-The client/server model introduces explicit role semantics. Here, a specific participant is selected as the "control" port – the `server` – and the others are assigned a `client` role:
+The client/server model establishes explicit role semantics. Here, one participant is assigned a `server` role – the "control plane" – and the others are assigned a `client` role:
 
 ```js
 const server = new BroadcastChannelPlus('room', {
@@ -469,68 +491,39 @@ const client2 = new BroadcastChannelPlus('room', {
 Both server and clients can join the channel in any order, but the server:
 
 + maintains a reference to all connected clients
-+ automatically closes all clients when closed
-+ automatically closes when all clients leave and its `autoClose` setting is enabled
++ automatically triggers closure across all clients when closed
++ automatically closes when all clients leave – but if `options.autoClose` is enabled
 
 By contrast, a client:
 
 * closes alone when closed
 
-This mode exists because BroadcastChannel’s native semantics do not provide coordinated teardown or authoritative control. Without it, participants cannot reliably know when a session has ended. Client/server mode enables explicit ownership, deterministic shutdown, and presence-aware coordination over a many-to-many transport.
+This mode exists because BroadcastChannel’s native semantics do not provide coordinated teardown or authoritative control. Without it, participants cannot reliably know when a session has ended. Client/server mode enables explicit ownership, deterministic shutdown, and presence-aware coordination over a many-to-many topology.
 
-### WebSocketPort
+#### WebSocketPort
 
-The lifecycle of a WebSocket connection is supported by a native ready state system. A webSocket's `.readyState` property, and related events, can already tell when the connection transitions between states. However, it does not solve the same problem as Port+'s Readiness by Interaction model.
+WebSockets have a native Ready State system inspectable via an instance's `.readyState` property.
 
-Port+ therefore lets you have two lifecycle strategies over WebSocketPort:
-
-+ Transport-driven lifecycle (default)
-+ Interaction-driven lifecycle (opt-in)
-
-By default, Port+ lets the WebSocket’s native lifecycle be the authoritative lifecycle.
+By default, Port+ lets the WebSocket’s native Ready State be the authoritative Ready State.
 
 In this mode:
 
-* WebSocketPort's `open` and `closed` states are based on the WebSocket's native ready states
-* no handshake control messages are exchanged
+* The WebSocketPort's `open` and `closed` states are based on the WebSocket's native `open` and `closed` states
+* no handshake takes place
 * readiness is assumed once the socket opens
 
-#### Explicit Handshake Mode
-
-To enable interaction-based readiness, WebSocketPort can opt out of native ready states. This is controlled by the `naturalOpen` flag:
+On choosing the explicit handshake model via `options.handshake`, the `open` state is determined differently.
 
 ```js
-const port = new WebSocketPort(ws, { naturalOpen: false });
+const port = new WebSocketPort(ws, { handshake: 1 });
 ```
 
 In this mode, each side transitions to the `open` state when:
 
-1. `.start()` is triggered explicitly or by interaction
-2. an acknowledgment is recieved from the other side
+1. `.start()` is triggered explicitly or by interaction – on both ends
+2. peer acknowledgment is recieved
 
 This allows WebSocketPort to behave identically to MessagePortPlus and BroadcastChannelPlus with respect to readiness and cleanup.
-
-### Lifecycle Inheritance
-
-Ports created via `port.channel()` and ports exposed via `event.ports` inherit:
-
-* `autoStart`
-* `postAwaitsOpen`
-
-from their parent port.
-
-These ports follow a symmetric, point-to-point lifecycle. Closing either side closes the other.
-
-### Practical Use
-
-The lifecycle API enables:
-
-* safe startup sequencing
-* early message queuing without race conditions
-* deterministic teardown and cleanup
-* consistent readiness checks across transports
-
-Port+ makes interaction readiness explicit, observable, and uniform across all messaging primitives.
 
 ---
 
@@ -580,7 +573,9 @@ star.addEventListener('message', (e) => {
 
 ##### Outbound (Fan-Out)
 
-A `.postMessage()` call on the star port is a `.postMessage()` call to all connected ports:
+A `.start()` call on the Star Port is a `.start()` call on all connected ports.
+A `.close()` call on the Star Port is a `.close()` call on all connected ports.
+A `.postMessage()` call on the Star Port is a `.postMessage()` call on all connected ports.
 
 ```js
 star.postMessage(data);
@@ -590,9 +585,16 @@ This makes `StarPort` a true proxy: a single observable endpoint over many indep
 
 #### Lifecycle Behavior
 
-* A star port transitions to the `open` ready state when the first child port is added
-* Closed ports are removed automatically
-* A star port transitions to the `closed` ready state when the last child port is removed and `autoClose` is enabled
+A Star Port automatically transitions to the `open` state by default. But when `options.handshake` is enabled, its Ready State is controlled by that of its child ports:
+
+* transitions to the `open` state when at least a child port exists and has Ready State `open`
+* transitions to the `closed` state when the last child closes or is removed – but if `options.autoClose` is enabled
+
+Regardless of `options.handshake`:
+
++ Closed ports are removed automatically.
++ Child ports added after `.start()` are automatically started.
++ Attempting to add a child port after `.close()` fails with an error.
 
 #### Typical Uses
 
@@ -604,7 +606,7 @@ This makes `StarPort` a true proxy: a single observable endpoint over many indep
 
 A `RelayPort` is a **router** that forwards messages *between sibling ports*.
 
-It is an extension of `StarPort` and inherits all of its properties, methods, and behaviors.
+It is an extension of `StarPort` and inherits all of its properties, methods, and lifecycle behavior.
 
 ```js
 const relay = new RelayPort('room');
@@ -631,17 +633,11 @@ This creates peer-to-peer fan-out.
 
 ##### Outbound Broadcast
 
-As with a star port, a `.postMessage()` call on the relay port is a `.postMessage()` call to all connected ports:
-
-```js
-relay.postMessage(data);
-```
-
-`RelayPort` has identical outbound behavior to `StarPort`.
+As with the Star Port, a `.postMessage()` call on the relay port is a `.postMessage()` call to all connected ports.
 
 ##### Join / Leave Signaling
 
-When a port joins (via `relay.addPort()`) or leaves (via `relay.removePort()` or via port close), synthetic join/leave messages are routed to peers.
+When a port joins (via `relay.addPort()`) or leaves (via `relay.removePort()` or via port closure), a synthetic join/leave message is routed to peers.
 
 This enables presence-aware systems (e.g. chat rooms).
 
@@ -823,7 +819,6 @@ port.addEventListener('message', (e) => {
 Reply ports:
 
 * form a symmetric 1:1 connection
-* inherit lifecycle settings from their parent port
 * close automatically when either side closes
 
 Use reply ports when:
@@ -910,21 +905,21 @@ All Port+ implementations – `MessagePortPlus`, `BroadcastChannelPlus`, `WebSoc
 
 ```js
 new MessageChannelPlus({
-    autoStart?: boolean,
+    handshake?: number,
     postAwaitsOpen?: boolean
 });
 ```
 
 | Option           | Default | Description                                           |
 | ---------------- | ------- | ----------------------------------------------------- |
-| `autoStart`      | `true`  | Automatically initiate handshake on first interaction |
+| `handshake`      | `0`     | Conduct a handshake process to coordinate Ready State |
 | `postAwaitsOpen` | `false` | Queue messages until the port is `open`               |
 
 #### `BroadcastChannelPlus`
 
 ```js
 new BroadcastChannelPlus(name, {
-    autoStart?: boolean,
+    handshake?: number,
     postAwaitsOpen?: boolean,
     clientServerMode?: 'server' | 'client' | null,
     autoClose?: boolean
@@ -933,32 +928,30 @@ new BroadcastChannelPlus(name, {
 
 | Option             | Default | Description                                   |
 | ------------------ | ------- | --------------------------------------------- |
-| `autoStart`        | `true`  | Begin handshake on first interaction          |
+| `handshake`        | `0`     | Conduct a handshake process to coordinate Ready State |
 | `postAwaitsOpen`   | `false` | Queue messages until readiness                |
 | `clientServerMode` | `null`  | Can be one of `'server'`, `'client'` or `null` |
-| `autoClose`        | `true` | Auto-close server when all clients disconnect |
+| `autoClose`        | `false` | Auto-close server when all clients disconnect |
 
 #### `WebSocketPort`
 
 ```js
 new WebSocketPort(wsOrUrl, {
-    autoStart?: boolean,
-    naturalOpen?: boolean,
+    handshake?: number,
     postAwaitsOpen?: boolean
 });
 ```
 
 | Option           | Default | Description                          |
 | ---------------- | ------- | ------------------------------------ |
-| `autoStart`      | `true`  | Begin handshake on first interaction |
-| `naturalOpen`    | `true`  | Use WebSocket transport readiness instead of Port+ interaction-based ready state |
+| `handshake`      | `0`     | Conduct a handshake process to coordinate Ready State |
 | `postAwaitsOpen` | `false` | Queue messages until readiness       |
 
 #### `StarPort`
 
 ```js
 new StarPort({
-    autoStart?: boolean,
+    handshake?: number,
     postAwaitsOpen?: boolean,
     autoClose?: boolean
 });
@@ -966,15 +959,15 @@ new StarPort({
 
 | Option           | Default | Description                          |
 | ---------------- | ------- | ------------------------------------ |
-| `autoStart`      | `true`  | Igonred for self. Inherited by `.channel()` ports |
+| `handshake`      | `0`     | Conduct a handshake process to coordinate Ready State |
 | `postAwaitsOpen` | `false` | Queue messages until readiness       |
-| `autoClose`      | `true`  | Auto-close server when all clients disconnect |
+| `autoClose`      | `false`  | Auto-close when all clients close or are removed |
 
 #### `RelayPort`
 
 ```js
 new RelayPort(channelSpec?, {
-    autoStart?: boolean,
+    handshake?: number,
     postAwaitsOpen?: boolean,
     autoClose?: boolean
 });
@@ -982,9 +975,9 @@ new RelayPort(channelSpec?, {
 
 | Option           | Default | Description                          |
 | ---------------- | ------- | ------------------------------------ |
-| `autoStart`      | `true`  | Igonred for self. Inherited by `.channel()` ports |
+| `handshake`      | `0`     | Conduct a handshake process to coordinate Ready State |
 | `postAwaitsOpen` | `false` | Queue messages until readiness       |
-| `autoClose`      | `true`  | Auto-close server when all clients disconnect |
+| `autoClose`      | `false`  | Auto-close when all clients close or are removed |
 
 ### Lifecycle API
 
@@ -997,7 +990,7 @@ new RelayPort(channelSpec?, {
 
 Explicitly initiates the interaction handshake.
 
-* Required when `autoStart` is `false`
+* Required when `options.handshake` is `2`
 * Signals readiness to the remote side
 
 #### `close(): void`
@@ -1091,13 +1084,6 @@ Creates a logical sub-port scoped to a message namespace.
 * Tags outbound messages
 * Shares lifecycle with the parent port
 
-Ports created via `port.channel()` (and ports exposed via `event.ports`) inherit:
-
-* `autoStart`
-* `postAwaitsOpen`
-
-from their parent port.
-
 #### `relay(config): () => void`
 
 Establishes explicit routing between ports. `config` is:
@@ -1140,7 +1126,7 @@ All message events dispatched by Port+ ports.
 | `data`        | any | Message payload                 |
 | `type`        | string | Event type                      |
 | `eventID`     | string | Stable message identifier       |
-| `ports`       | `MessagePortPlus[]` | Reply ports. Each instance inherits `autoStart` and `postAwaitsOpen`. Closing either side closes the other.                     |
+| `ports`       | `MessagePortPlus[]` | Reply ports.        |
 | `live`        | boolean | Indicates a live object payload |
 | `relayedFrom` | `MessagePortPlus` | Originating port (if routed)    |
 
