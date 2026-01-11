@@ -388,9 +388,9 @@ export function MessagePortPlusMixin(superClass) {
             this.constructor.upgradeEvents(messageChannel.port1);
             messageChannel.port1.start();
 
-            const { signal = null, once = false, transfer = [], ..._options } = options;
+            const { signal, once = false, transfer = [], ..._options } = options;
 
-            messageChannel.port1.addEventListener('message', (e) => callback(e), { signal, once });
+            messageChannel.port1.addEventListener('message', (e) => callback(e), { signal: signal || undefined/* NO NULLS */, once });
             signal?.addEventListener('abort', () => {
                 messageChannel.port1.close();
                 messageChannel.port2.close();
@@ -779,7 +779,7 @@ export function preProcessPostMessage(message = undefined, transferOrOptions = {
         bubbles = false,
         forwarded = false,
         relayedFrom = null,
-        signal = null,
+        signal = undefined,
         withArrayMethodDescriptors = false,
         honourDoneMutationFlags = false,
         ...portOptions
@@ -788,7 +788,7 @@ export function preProcessPostMessage(message = undefined, transferOrOptions = {
     if (!eventID) eventID = `${type}-${(0 | Math.random() * 9e6).toString(36)}`;
 
     if (!observing && !forwarded && _isTypeObject(message) && live && !type?.endsWith('.mutate')) {
-        publishMutations.call(this, message, eventID, { signal, withArrayMethodDescriptors, honourDoneMutationFlags });
+        publishMutations.call(this, message, eventID, { signal: signal || undefined/* NO NULLS */, withArrayMethodDescriptors, honourDoneMutationFlags });
         observing = true;
     }
 
@@ -833,7 +833,7 @@ export function publishMutations(message, eventID, { signal, withArrayMethodDesc
     };
 
 
-    const dispose = Observer.observe(message, Observer.subtree(), mutationHandler, { signal, withArrayMethodDescriptors });
+    const dispose = Observer.observe(message, Observer.subtree(), mutationHandler, { signal: signal || undefined/* NO NULLS */, withArrayMethodDescriptors });
     const garbageCollection = getGarbageCollection.call(this);
     garbageCollection.add(dispose);
 
@@ -876,7 +876,7 @@ export function applyMutations(message, eventID, { signal, honourDoneMutationFla
         if (mutationsDone) cleanup();
     };
 
-    this.addEventListener(`${eventID}.mutate`, messageHandler, { signal });
+    this.addEventListener(`${eventID}.mutate`, messageHandler, { signal: signal || undefined/* NO NULLS */ });
     const cleanup = () => this.removeEventListener(`${eventID}.mutate`, messageHandler);
 
     const garbageCollection = getGarbageCollection.call(this);
