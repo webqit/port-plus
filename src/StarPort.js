@@ -87,7 +87,7 @@ export class StarPort extends MessagePortPlus {
     _postMessage(payload, portOptions, relayedFrom) {
         for (const portPlus of this.#ports) {
             if (portPlus === relayedFrom) continue;
-            portPlus.postMessage(payload, portOptions);
+            portPlus.postMessage(payload, { ...portOptions, portPlusIgnore: true });
         }
     }
 

@@ -332,22 +332,30 @@ export function MessagePortPlusMixin(superClass) {
         postMessage(message, transferOrOptions = {}) {
             this._autoStart();
 
+            let portPlusIgnore; // From starPort
+            if (transferOrOptions?.portPlusIgnore) {
+                ({ portPlusIgnore, ...transferOrOptions } = transferOrOptions);
+            }
+
             // Update readyState
             const readyStateInternals = getReadyStateInternals.call(this);
             readyStateInternals.messaging.state = true;
             readyStateInternals.messaging.resolve(this);
 
-            // Format payload if not yet in the ['.wq'] format
             let _relayedFrom;
-            const { portOptions, wqOptions: { relayedFrom, ...wqOptions } } = preProcessPostMessage.call(this, message, transferOrOptions);
-            if (wqOptions.type !== 'message'
-                || wqOptions.live
-                || wqOptions.bubbles
-                || portOptions.transfer?.length && (this instanceof BroadcastChannel || this instanceof WebSocketPort)) {
-                message = { message, ['.wq']: wqOptions };
+
+            if (!portPlusIgnore) {
+                // Format payload if not yet in the ['.wq'] format
+                const { portOptions, wqOptions: { relayedFrom, ...wqOptions } } = preProcessPostMessage.call(this, message, transferOrOptions);
+                if (wqOptions.type !== 'message'
+                    || wqOptions.live
+                    || wqOptions.bubbles
+                    || portOptions.transfer?.length && (this instanceof BroadcastChannel || this instanceof WebSocketPort)) {
+                    message = { message, ['.wq']: wqOptions };
+                }
+                transferOrOptions = portOptions;
+                _relayedFrom = relayedFrom;
             }
-            transferOrOptions = portOptions;
-            _relayedFrom = relayedFrom;
 
             // Exec
             const post = () => {
@@ -385,7 +393,7 @@ export function MessagePortPlusMixin(superClass) {
             }
 
             const messageChannel = new MessageChannel;
-            this.constructor.upgradeEvents(messageChannel.port1);
+            MessagePortPlus.upgradeInPlace(messageChannel.port1);
             messageChannel.port1.start();
 
             const { signal, once = false, transfer = [], ..._options } = options;
