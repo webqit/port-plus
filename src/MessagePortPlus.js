@@ -219,14 +219,17 @@ export function MessagePortPlusMixin(superClass) {
                 portPlus.dispatchEvent(eventPlus);
             };
 
+            const errorHandler = (e) => {
+            };
+
             rawPortMeta.set('internal_call', true);
             port.addEventListener('message', messageHandler);
-            port.addEventListener('error', messageHandler);
+            port.addEventListener('error', errorHandler);
             rawPortMeta.delete('internal_call');
 
             garbageCollection.add(() => {
                 port.removeEventListener('message', messageHandler);
-                port.removeEventListener('error', messageHandler);
+                port.removeEventListener('error', errorHandler);
 
                 rawPortMeta.set('events+', false);
             });

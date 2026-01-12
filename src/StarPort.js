@@ -114,7 +114,7 @@ export class StarPort extends MessagePortPlus {
             portPlus.close(...args);
         }
 
-        if (!this.options.handshake) {
+        if (!this.options.handshake || !this.#ports.size) {
             const readyStateInternals = getReadyStateInternals.call(this);
             readyStateInternals.close.state = true;
             readyStateInternals.close.resolve(this);
