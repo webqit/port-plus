@@ -20,6 +20,34 @@ export class StarPort extends MessagePortPlus {
         if (handshake === 0) this.start();
     }
 
+    #autoCloseX;
+    get autoCloseXPromise() { return this.#autoCloseX?.p; }
+
+    #autoCloseXPromises = new Set;
+    extendAutoClose(promise) {
+        const readyStateInternals = getReadyStateInternals.call(this);
+
+        if (readyStateInternals.close.state) {
+            throw new Error('Port lifecycle already complete.');
+        }
+
+        promise = Promise.resolve(promise);
+        this.#autoCloseXPromises.add(promise);
+        if (!this.#autoCloseX) {
+            let r;
+            const p = new Promise(res => (r = res));
+            this.#autoCloseX = { p, r };
+        }
+
+        return promise.finally(() => {
+            this.#autoCloseXPromises.delete(promise);
+            if (!this.#autoCloseXPromises.size) {
+                this.#autoCloseX.r();
+                this.#autoCloseX = null;
+            }
+        });
+    }
+
     addPort(portPlus, { enableBubbling = true } = {}) {
         if (!(portPlus instanceof MessagePortPlus)) {
             throw new TypeError('Port must be a WQMessagePort instance.');
@@ -38,10 +66,10 @@ export class StarPort extends MessagePortPlus {
         const portPlusMeta = _meta(portPlus);
 
         if (enableBubbling) {
-            if (portPlusMeta.get('parentNode')) {
+            if (portPlusMeta.get('parentPort')) {
                 throw new TypeError('Incoming port already has a parent node.');
             }
-            portPlusMeta.set('parentNode', this); // @ORDER: 2
+            portPlusMeta.set('parentPort', this); // @ORDER: 2
         }
 
         if (this.options.handshake) {
@@ -62,15 +90,21 @@ export class StarPort extends MessagePortPlus {
             this.#ports.delete(portPlus);
 
             if (enableBubbling
-                && portPlusMeta.get('parentNode') === this) {
-                portPlusMeta.set('parentNode', null);
+                && portPlusMeta.get('parentPort') === this) {
+                portPlusMeta.set('parentPort', null);
             }
 
-            if (this.#ports.size === 0
-                && _options(this).autoClose) {
-                readyStateInternals.close.state = true;
-                readyStateInternals.close.resolve(this);
-            }
+            const resolveClose = () => {
+                if (this.#ports.size === 0
+                    && _options(this).autoClose) {
+                    readyStateInternals.close.state = true;
+                    readyStateInternals.close.resolve(this);
+                }
+            };
+
+            if (this.#autoCloseX) {
+                this.#autoCloseX.p.finally(resolveClose);
+            } else resolveClose();
         };
 
         return cleanup;
@@ -113,6 +147,7 @@ export class StarPort extends MessagePortPlus {
         for (const portPlus of this.#ports) {
             portPlus.close(...args);
         }
+        this.#autoCloseX?.r();
 
         if (!this.options.handshake || !this.#ports.size) {
             const readyStateInternals = getReadyStateInternals.call(this);

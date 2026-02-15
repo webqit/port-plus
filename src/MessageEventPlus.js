@@ -3,8 +3,20 @@ import { MessagePortPlus, applyMutations, _options } from './MessagePortPlus.js'
 
 export class MessageEventPlus extends MessageEvent {
 
-    #originalTarget;
-    get originalTarget() { return this.#originalTarget; }
+    static setCurrentTarget(event, currentTarget) {
+        event.#currentTarget = currentTarget;
+        if (!event.#target) {
+            event.#target = target;
+        }
+    }
+
+    // ----------
+
+    #currentTarget;
+    get currentTarget() { return this.#currentTarget; }
+
+    #target;
+    get target() { return this.#target; }
 
     #eventID;
     get eventID() { return this.#eventID; }
@@ -28,7 +40,7 @@ export class MessageEventPlus extends MessageEvent {
     get ports() { return this.#ports; }
 
     constructor(data, {
-        originalTarget = null,
+        target = null,
         type = 'message',
         eventID,
         live = false,
@@ -42,7 +54,7 @@ export class MessageEventPlus extends MessageEvent {
         }
         super(type);
         this.#data = data;
-        this.#originalTarget = originalTarget;
+        this.#target = target;
         this.#eventID = eventID;
         this.#live = live;
         this.#bubbles = bubbles;
@@ -56,7 +68,7 @@ export class MessageEventPlus extends MessageEvent {
             if (typeof eventID !== 'string') {
                 throw new TypeError('eventID must be a non-empty string');
             }
-            applyMutations.call(originalTarget, this.#data, this.#eventID, { honourDoneMutationFlags: this.#honourDoneMutationFlags });
+            applyMutations.call(target, this.#data, this.#eventID, { honourDoneMutationFlags: this.#honourDoneMutationFlags });
         }
     }
 

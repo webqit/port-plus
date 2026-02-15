@@ -1,8 +1,8 @@
 import { _wq as $wq } from '@webqit/util/js/index.js';
 import { _isObject, _isTypeObject } from '@webqit/util/js/index.js';
 import { MessageEventPlus } from './MessageEventPlus.js';
-import { Observer } from '@webqit/observer';
 import { WebSocketPort } from './WebSocketPort.js';
+import { Observer } from '@webqit/observer';
 
 export const _wq = (target, ...args) => $wq(target, 'port+', ...args);
 export const _meta = (target, ...args) => $wq(target, 'port+', 'meta', ...args);
@@ -211,7 +211,7 @@ export function MessagePortPlusMixin(superClass) {
                 }
 
                 const eventPlus = new MessageEventPlus(message, {
-                    originalTarget: port,
+                    target: port,
                     ...wqOptions,
                     ports: e.ports,
                 });
@@ -322,13 +322,19 @@ export function MessagePortPlusMixin(superClass) {
         }
 
         dispatchEvent(event) {
+            if (event instanceof MessageEventPlus) {
+                MessageEventPlus.setCurrentTarget(event, this);
+            }
+
             const returnValue = this._dispatchEvent
                 ? this._dispatchEvent(event)
                 : super.dispatchEvent(event);
+
             if (event instanceof MessageEventPlus) {
                 // Bubble semantics
                 propagateEvent.call(this, event);
             }
+
             return returnValue;
         }
 
@@ -681,13 +687,11 @@ export function propagateEvent(event) {
     if (event.propagationStopped) return;
     const portMeta = _meta(this);
 
-    if (portMeta.get('parentNode') instanceof EventTarget && (
+    if (portMeta.get('parentPort') instanceof EventTarget && (
         event.bubbles
-        || portMeta.get('parentNode')?.findPort?.((port) => port === this) && event instanceof MessageEventPlus)
+        || portMeta.get('parentPort')?.findPort?.((port) => port === this) && event instanceof MessageEventPlus)
     ) {
-        portMeta.get('parentNode').dispatchEvent(event);
-        // "parentNode" is typically a StarPort feature
-        // in case "this" is a RelayPort
+        portMeta.get('parentPort').dispatchEvent(event);
     }
 
     const downstreamRegistry = getDownstreamRegistry.call(this);
