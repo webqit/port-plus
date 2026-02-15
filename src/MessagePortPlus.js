@@ -211,7 +211,7 @@ export function MessagePortPlusMixin(superClass) {
                 }
 
                 const eventPlus = new MessageEventPlus(message, {
-                    target: port,
+                    target: portPlus,
                     ...wqOptions,
                     ports: e.ports,
                 });
