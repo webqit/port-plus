@@ -6,7 +6,7 @@ export class MessageEventPlus extends MessageEvent {
     static setCurrentTarget(event, currentTarget) {
         event.#currentTarget = currentTarget;
         if (!event.#target) {
-            event.#target = target;
+            event.#target = currentTarget;
         }
     }
 
