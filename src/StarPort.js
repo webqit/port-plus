@@ -7,6 +7,9 @@ import {
 
 export class StarPort extends MessagePortPlus {
 
+    #tags = new Map;
+    get tags() { return this.#tags; }
+
     #ports = new Set;
     #startCalled = false;
     #closeCalled = false;
