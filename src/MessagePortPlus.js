@@ -131,8 +131,8 @@ export function MessagePortPlusMixin(superClass) {
                  * Handle lifecycle events from the other end
                  */
 
-                if (e.data.ping === 'connect'
-                    && typeof e.data?.['.wq']?.eventID === 'string'
+                if (e.data?.ping === 'connect'
+                    && typeof e.data['.wq']?.eventID === 'string'
                     && (!(port instanceof WebSocket) || options.handshake)) {
                     // This is a special ping from a MessagePort or BroadcastChannel instance
                     // that helps us simulate an "open" event
@@ -164,8 +164,8 @@ export function MessagePortPlusMixin(superClass) {
                     return;
                 }
 
-                if (e.data.ping === 'disconnect'
-                    && typeof e.data?.['.wq']?.eventID === 'string') {
+                if (e.data?.ping === 'disconnect'
+                    && typeof e.data['.wq']?.eventID === 'string') {
                     // This is a special ping from a BroadcastChannel instance
                     // that helps us simulate a "close" event
                     // WebSockets naturally fire a close event
@@ -407,11 +407,16 @@ export function MessagePortPlusMixin(superClass) {
 
             const { signal, once = false, transfer = [], ..._options } = options;
 
-            messageChannel.port1.addEventListener('message', (e) => callback(e), { signal: signal || undefined/* NO NULLS */, once });
-            signal?.addEventListener('abort', () => {
+            const gc = () => {
                 messageChannel.port1.close();
                 messageChannel.port2.close();
-            });
+            };
+            signal?.addEventListener('abort', gc);
+
+            messageChannel.port1.addEventListener('message', (e) => {
+                callback(e);
+                if (once) gc();
+            }, { signal: signal || undefined/* NO NULLS */, once });
 
             this.postMessage(data, { ..._options, transfer: [messageChannel.port2].concat(transfer) });
             return returnValue;
